@@ -1,0 +1,31 @@
+{
+  "name": "@achi/drive-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Achi Drive — gives AI agents (Claude, Cursor, etc.) access to your end-to-end encrypted files.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "achi-drive-mcp": "dist/index.js"
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "keywords": ["mcp", "model-context-protocol", "achi", "drive", "ai", "agent", "claude"],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}
