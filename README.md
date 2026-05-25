@@ -89,6 +89,23 @@ npm run build
 ACHI_API_TOKEN=achi_pat_xxx node dist/index.js
 ```
 
+## Smoke test
+
+After deploying the backend (worker + migration), verify the chain end-to-end:
+
+```bash
+ACHI_API_TOKEN=achi_pat_xxx npm run smoke
+```
+
+This walks: auth → list → unwrap → create folder → upload → download (full + Range) → rename → search → permanent delete. Exits non-zero on any failure.
+
+## Helper scripts
+
+| Script | What it does |
+|---|---|
+| `scripts/deploy-helper.sh` | Runs the DB migration, deploys the worker, rebuilds the frontend. Needs `NILE_DIRECT_DB_URL` exported + `wrangler login` already done. |
+| `scripts/smoke-test.mjs` | End-to-end /v1 API test against a deployed worker. Idempotent (cleans up after itself). |
+
 ## License
 
 MIT
