@@ -255,6 +255,25 @@ export class AchiClient {
             bytes: buf,
             size: buf.length,
             partial: false,
+            documentId: resp.headers.get('x-achi-document-id') || undefined,
+            settlementId: resp.headers.get('x-achi-nk-settlement-id') || undefined,
         };
+    }
+    async listNkSettlements(unitId, opts = {}) {
+        return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/nk`, {}, opts.year != null ? { year: String(opts.year) } : {});
+    }
+    async createNkSettlement(unitId, body) {
+        return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/nk`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
+    async updateNkSettlement(unitId, nkId, body) {
+        return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/nk/${encodeURIComponent(nkId)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
     }
 }

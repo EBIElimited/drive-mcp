@@ -425,6 +425,10 @@ server.tool('create_unit_document', 'Create a Properties trail document (NK lett
     mimeType: z.string().optional(),
     contentBase64: z.string().optional().describe('Raw file bytes as base64'),
     driveFileId: z.string().uuid().optional(),
+    occupancyId: z.string().uuid().optional(),
+    periodFrom: z.string().optional(),
+    periodTo: z.string().optional(),
+    year: z.number().int().optional(),
 }, async (args) => {
     try {
         return jsonText(await client.createUnitDocument(args.unitId, {
@@ -436,6 +440,10 @@ server.tool('create_unit_document', 'Create a Properties trail document (NK lett
             mimeType: args.mimeType,
             contentBase64: args.contentBase64,
             driveFileId: args.driveFileId,
+            occupancyId: args.occupancyId,
+            periodFrom: args.periodFrom,
+            periodTo: args.periodTo,
+            year: args.year,
         }));
     }
     catch (err) {
@@ -572,10 +580,15 @@ server.tool('create_nk_letter', [
     'Compile a tenant Nebenkostenabrechnung PDF on the Achi server (no browser pdf.js).',
     'Pass recoverable line items only. Do not invent amounts, Anschrift, or IBAN.',
     'Do not include Eigentümerkosten leftovers or Quellenangabe — the server strips them.',
-    'Returns a PDF. Upload it with upload_file if the user wants it in Drive.',
+    'If tenants changed mid-year, pass occupancyId + periodFrom + periodTo so this letter does not overwrite the other stay.',
+    'Returns a PDF. Also files the unit trail and a settlement (x-achi-nk-settlement-id).',
 ].join(' '), {
     unitId: z.string().uuid(),
     year: z.number().int().min(2000).max(2100),
+    occupancyId: z.string().uuid().optional(),
+    periodFrom: z.string().optional().describe('YYYY-MM-DD stay start in this settlement year'),
+    periodTo: z.string().optional().describe('YYYY-MM-DD stay end in this settlement year'),
+    createSettlement: z.boolean().optional(),
     prepaidEuros: z.number().optional(),
     greeting: z.string().optional(),
     title: z.string().optional(),
@@ -597,7 +610,7 @@ server.tool('create_nk_letter', [
             content: [
                 {
                     type: 'text',
-                    text: `NK letter PDF ${pdf.size} bytes. Upload with upload_file if it should live in Drive.`,
+                    text: `NK letter PDF ${pdf.size} bytes.${pdf.settlementId ? ` settlement=${pdf.settlementId}` : ''}${pdf.documentId ? ` document=${pdf.documentId}` : ''}`,
                 },
                 {
                     type: 'resource',
@@ -609,6 +622,41 @@ server.tool('create_nk_letter', [
                 },
             ],
         };
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('list_nk_settlements', 'List tenant NK settlements for an apartment and year. Mid-year move-out → two rows, not one.', {
+    unitId: z.string().uuid(),
+    year: z.number().int().min(2000).max(2100).optional(),
+}, async ({ unitId, year }) => {
+    try {
+        return jsonText(await client.listNkSettlements(unitId, { year }));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('update_nk_settlement', 'Patch one NK settlement (status, amounts, notes). Does not change other tenants in the same year.', {
+    unitId: z.string().uuid(),
+    nkId: z.string().uuid(),
+    status: z.enum(['draft', 'ready_to_send', 'sent', 'paid', 'disputed']).optional(),
+    prepaidEuros: z.number().nullable().optional(),
+    totalCostsEuros: z.number().nullable().optional(),
+    balanceEuros: z.number().nullable().optional(),
+    notes: z.string().nullable().optional(),
+    documentId: z.string().uuid().optional(),
+}, async (args) => {
+    try {
+        return jsonText(await client.updateNkSettlement(args.unitId, args.nkId, {
+            status: args.status,
+            prepaidEuros: args.prepaidEuros,
+            totalCostsEuros: args.totalCostsEuros,
+            balanceEuros: args.balanceEuros,
+            notes: args.notes,
+            documentId: args.documentId,
+        }));
     }
     catch (err) {
         return errorResult(err);

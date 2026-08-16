@@ -327,6 +327,10 @@ export class AchiClient {
       contentBase64?: string
       driveFileId?: string
       source?: string
+      occupancyId?: string
+      periodFrom?: string
+      periodTo?: string
+      year?: number
     },
   ) {
     return this.json<{ document: unknown }>(
@@ -407,7 +411,7 @@ export class AchiClient {
     return this.json(`/v1/skills/${encodeURIComponent(name)}`, {}, opts)
   }
 
-  async createNkLetter(body: Record<string, unknown>): Promise<ContentBytes> {
+  async createNkLetter(body: Record<string, unknown>): Promise<ContentBytes & { documentId?: string; settlementId?: string }> {
     const resp = await this.request('/v1/letters/nk', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -419,6 +423,35 @@ export class AchiClient {
       bytes: buf,
       size: buf.length,
       partial: false,
+      documentId: resp.headers.get('x-achi-document-id') || undefined,
+      settlementId: resp.headers.get('x-achi-nk-settlement-id') || undefined,
     }
+  }
+
+  async listNkSettlements(unitId: string, opts: { year?: number } = {}) {
+    return this.json(
+      `/v1/properties/units/${encodeURIComponent(unitId)}/nk`,
+      {},
+      opts.year != null ? { year: String(opts.year) } : {},
+    )
+  }
+
+  async createNkSettlement(unitId: string, body: Record<string, unknown>) {
+    return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/nk`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  async updateNkSettlement(unitId: string, nkId: string, body: Record<string, unknown>) {
+    return this.json(
+      `/v1/properties/units/${encodeURIComponent(unitId)}/nk/${encodeURIComponent(nkId)}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    )
   }
 }
