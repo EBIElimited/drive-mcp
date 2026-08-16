@@ -1,7 +1,11 @@
 {
   "name": "@achi/drive-mcp",
-  "version": "1.0.0",
-  "description": "MCP server for Achi — Drive, Properties, Mail, Agent notes, NK letters.",
+  "version": "1.1.0",
+  "description": "MCP server for Achi — Drive, Properties (versioned writes), Mail, Agent notes, NK letters.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EBIElimited/drive-mcp.git"
+  },
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -11,6 +15,7 @@
   "files": ["dist", "README.md", "SKILL.md"],
   "scripts": {
     "build": "tsc",
+    "prepare": "tsc",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "smoke": "node scripts/smoke-test.mjs",

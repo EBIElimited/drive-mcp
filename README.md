@@ -15,7 +15,7 @@ Add to your MCP config (`~/Library/Application Support/Claude/claude_desktop_con
   "mcpServers": {
     "achi-drive": {
       "command": "npx",
-      "args": ["-y", "@achi/drive-mcp"],
+      "args": ["-y", "github:EBIElimited/drive-mcp"],
       "env": {
         "ACHI_API_TOKEN": "achi_pat_xxxxxxxx"
       }
@@ -31,7 +31,9 @@ Same idea — point the host at the binary and set `ACHI_API_TOKEN`. The binary 
 ### Manual run (for debugging)
 
 ```bash
-ACHI_API_TOKEN=achi_pat_xxx npx @achi/drive-mcp
+ACHI_API_TOKEN=achi_pat_xxx npx -y github:EBIElimited/drive-mcp
+
+`@achi/drive-mcp` is the package name; install from GitHub until it is on the npm registry.
 ```
 
 ## Tools
@@ -56,6 +58,9 @@ ACHI_API_TOKEN=achi_pat_xxx npx @achi/drive-mcp
 | `delete_folder` | Recursive trash (default) or permanent delete |
 | `list_units` | Properties apartments (`teamId` / `scope=all`) |
 | `get_unit` | One apartment |
+| `update_unit` | Write sqm, rooms, rent, tenant… Snapshots first. |
+| `list_unit_versions` | Version history |
+| `restore_unit` | Revert a snapshot |
 | `list_unit_documents` | Trail (HV, heating, tax, letters) |
 | `download_unit_document` | Download a trail file |
 | `list_unit_payments` | Bank-matched rent trail |
