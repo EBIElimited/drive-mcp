@@ -547,6 +547,31 @@ server.tool(
 )
 
 server.tool(
+  'update_unit_document',
+  'Patch a trail document’s title, documentDate (YYYY-MM-DD or DD.MM.YYYY), or notes. Use this for a wrong letter date — do not ask the user to edit the UI.',
+  {
+    unitId: z.string().uuid(),
+    docId: z.string().uuid(),
+    title: z.string().optional(),
+    documentDate: z.string().optional().describe('YYYY-MM-DD or DD.MM.YYYY — the letter/receipt date, not 31 Dec of the settlement year'),
+    notes: z.string().nullable().optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(
+        await client.updateUnitDocument(args.unitId, args.docId, {
+          title: args.title,
+          documentDate: args.documentDate,
+          notes: args.notes,
+        }),
+      )
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
   'download_unit_document',
   'Download one trail document (PDF/ODT). Use this instead of asking the user to re-attach HV or heating files.',
   { unitId: z.string().uuid(), docId: z.string().uuid() },

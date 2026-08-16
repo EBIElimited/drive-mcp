@@ -315,6 +315,21 @@ export class AchiClient {
     )
   }
 
+  async updateUnitDocument(
+    unitId: string,
+    docId: string,
+    body: { title?: string; documentDate?: string; date?: string; notes?: string | null },
+  ) {
+    return this.json<{ document: unknown }>(
+      `/v1/properties/units/${encodeURIComponent(unitId)}/documents/${encodeURIComponent(docId)}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    )
+  }
+
   async downloadUnitDocument(unitId: string, docId: string): Promise<ContentBytes> {
     const resp = await this.request(
       `/v1/properties/units/${encodeURIComponent(unitId)}/documents/${encodeURIComponent(docId)}/download`,
