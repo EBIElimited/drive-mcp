@@ -105,8 +105,8 @@ function contentBytesToMcp(c: ContentBytes, filename: string, fileId: string) {
 // ── Server setup ────────────────────────────────────────────────────────────
 
 const server = new McpServer({
-  name: 'achi-drive',
-  version: '1.0.0',
+  name: 'achi',
+  version: '1.1.0',
 })
 
 // ── Identity / Discovery ────────────────────────────────────────────────────
@@ -415,6 +415,227 @@ server.tool(
   async ({ id, permanent }) => {
     try {
       return jsonText(await client.deleteFolder(id, { permanent }))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+// ── Properties / Mail / Agent / letters ─────────────────────────────────────
+
+server.tool(
+  'list_units',
+  'List Properties (Vermietung) apartments the user can see. Pass teamId for a space such as Chi Ross. scope=all lists every space.',
+  {
+    teamId: z.string().optional(),
+    scope: z.enum(['all']).optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.listUnits(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'get_unit',
+  'Load one apartment: tenant, rent, address, trail folder. Does not invent Anschrift or IBAN.',
+  { id: z.string().uuid() },
+  async ({ id }) => {
+    try {
+      return jsonText(await client.getUnit(id))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'list_unit_documents',
+  'List the Properties document trail for an apartment (HV, heating, tax, prior NK letters).',
+  { unitId: z.string().uuid() },
+  async ({ unitId }) => {
+    try {
+      return jsonText(await client.listUnitDocuments(unitId))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'download_unit_document',
+  'Download one trail document (PDF/ODT). Use this instead of asking the user to re-attach HV or heating files.',
+  { unitId: z.string().uuid(), docId: z.string().uuid() },
+  async ({ unitId, docId }) => {
+    try {
+      const content = await client.downloadUnitDocument(unitId, docId)
+      return {
+        content: [
+          { type: 'text' as const, text: `Downloaded ${content.size} bytes (${content.mimeType})` },
+          ...contentBytesToMcp(content, 'document', docId),
+        ],
+      }
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'list_unit_payments',
+  'Bank-statement payment trail for an apartment (cold/warm/NK). Source of rent-paid truth.',
+  {
+    unitId: z.string().uuid(),
+    from: z.string().optional().describe('YYYY-MM'),
+    to: z.string().optional().describe('YYYY-MM'),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.listUnitPayments(args.unitId, { from: args.from, to: args.to }))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'get_landlord_profile',
+  'Stored Vermieter letterhead for a space. Empty fields stay empty — never invent legal name, street, or IBAN.',
+  { teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.landlordProfile(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'list_bank_transactions',
+  'Kontoauszug lines for a team space. Requires teamId.',
+  {
+    teamId: z.string(),
+    from: z.string().optional(),
+    to: z.string().optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.listBank(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'list_mail_accounts',
+  'Mailboxes the user can read. Never returns passwords.',
+  { teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.listMailAccounts(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'search_mail',
+  'Search mail the user can read (subject/from/snippet). No passwords.',
+  {
+    teamId: z.string().optional(),
+    accountId: z.string().optional(),
+    q: z.string().optional(),
+    mailbox: z.string().optional().describe('INBOX or SENT'),
+    limit: z.number().int().min(1).max(100).optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.searchMail(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'read_mail',
+  'Read one mail message including plaintext body. No passwords.',
+  { id: z.string() },
+  async ({ id }) => {
+    try {
+      return jsonText(await client.readMail(id))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'list_agent_notes',
+  'List Drive /Agent notes in a space (agent.md, learnings/letters.md, …). Requires a content-access token.',
+  { teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.listAgentNotes(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'create_nk_letter',
+  [
+    'Compile a tenant Nebenkostenabrechnung PDF on the Achi server (no browser pdf.js).',
+    'Pass recoverable line items only. Do not invent amounts, Anschrift, or IBAN.',
+    'Do not include Eigentümerkosten leftovers or Quellenangabe — the server strips them.',
+    'Returns a PDF. Upload it with upload_file if the user wants it in Drive.',
+  ].join(' '),
+  {
+    unitId: z.string().uuid(),
+    year: z.number().int().min(2000).max(2100),
+    prepaidEuros: z.number().optional(),
+    greeting: z.string().optional(),
+    title: z.string().optional(),
+    notes: z.array(z.string()).optional(),
+    items: z
+      .array(
+        z.object({
+          posten: z.string(),
+          schluessel: z.string().optional(),
+          gesamt: z.string().optional(),
+          ihrAnteilEinheiten: z.string().optional(),
+          betrag: z.string().optional(),
+          ihrAnteil: z.string(),
+        }),
+      )
+      .min(1),
+  },
+  async (args) => {
+    try {
+      const pdf = await client.createNkLetter(args)
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `NK letter PDF ${pdf.size} bytes. Upload with upload_file if it should live in Drive.`,
+          },
+          {
+            type: 'resource' as const,
+            resource: {
+              uri: `achi://letters/nk/${args.unitId}/${args.year}`,
+              mimeType: 'application/pdf',
+              blob: bytesToBase64(pdf.bytes),
+            },
+          },
+        ],
+      }
     } catch (err) {
       return errorResult(err)
     }

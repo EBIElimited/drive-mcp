@@ -272,4 +272,76 @@ export class AchiClient {
       permanent: opts.permanent ? '1' : undefined,
     })
   }
+
+  // ── Properties / Mail / Agent / letters ────────────────────────────────
+
+  async listUnits(opts: { teamId?: string; scope?: 'all' } = {}) {
+    return this.json<{ scope: string; teamId: string | null; units: unknown[] }>('/v1/properties/units', {}, opts)
+  }
+
+  async getUnit(id: string) {
+    return this.json<{ unit: unknown }>(`/v1/properties/units/${encodeURIComponent(id)}`)
+  }
+
+  async listUnitDocuments(unitId: string) {
+    return this.json<{ unitId: string; documents: unknown[] }>(
+      `/v1/properties/units/${encodeURIComponent(unitId)}/documents`,
+    )
+  }
+
+  async downloadUnitDocument(unitId: string, docId: string): Promise<ContentBytes> {
+    const resp = await this.request(
+      `/v1/properties/units/${encodeURIComponent(unitId)}/documents/${encodeURIComponent(docId)}/download`,
+    )
+    const buf = new Uint8Array(await resp.arrayBuffer())
+    return {
+      mimeType: resp.headers.get('content-type')?.split(';')[0]?.trim() || 'application/octet-stream',
+      bytes: buf,
+      size: buf.length,
+      partial: false,
+    }
+  }
+
+  async listUnitPayments(unitId: string, opts: { from?: string; to?: string } = {}) {
+    return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/payments`, {}, opts)
+  }
+
+  async landlordProfile(opts: { teamId?: string } = {}) {
+    return this.json('/v1/properties/landlord-profile', {}, opts)
+  }
+
+  async listBank(opts: { teamId: string; from?: string; to?: string }) {
+    return this.json('/v1/properties/bank', {}, opts)
+  }
+
+  async listMailAccounts(opts: { teamId?: string } = {}) {
+    return this.json('/v1/mail/accounts', {}, opts)
+  }
+
+  async searchMail(opts: { teamId?: string; accountId?: string; q?: string; mailbox?: string; limit?: number }) {
+    return this.json('/v1/mail/messages', {}, opts)
+  }
+
+  async readMail(id: string) {
+    return this.json(`/v1/mail/messages/${encodeURIComponent(id)}`)
+  }
+
+  async listAgentNotes(opts: { teamId?: string } = {}) {
+    return this.json('/v1/agent/notes', {}, opts)
+  }
+
+  async createNkLetter(body: Record<string, unknown>): Promise<ContentBytes> {
+    const resp = await this.request('/v1/letters/nk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const buf = new Uint8Array(await resp.arrayBuffer())
+    return {
+      mimeType: 'application/pdf',
+      bytes: buf,
+      size: buf.length,
+      partial: false,
+    }
+  }
 }

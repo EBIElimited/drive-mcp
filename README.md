@@ -1,6 +1,6 @@
 # @achi/drive-mcp
 
-MCP server for [Achi Drive](https://achi.cc) — lets AI agents (Claude Code, Claude Desktop, Cursor, Continue, etc.) read, search, upload, and manage files in your end-to-end encrypted drive.
+MCP server for [Achi](https://achi.cc) — Hermes, Grok Build, Claude, Cursor. One `achi_pat_*` token sees the same spaces and apps as the user: Drive, Properties, Mail, Agent notes, and server-side NK letters.
 
 ## Install + run
 
@@ -54,6 +54,17 @@ ACHI_API_TOKEN=achi_pat_xxx npx @achi/drive-mcp
 | `create_folder` | Make a new folder |
 | `update_folder` | Rename / move / star / trash / restore |
 | `delete_folder` | Recursive trash (default) or permanent delete |
+| `list_units` | Properties apartments (`teamId` / `scope=all`) |
+| `get_unit` | One apartment |
+| `list_unit_documents` | Trail (HV, heating, tax, letters) |
+| `download_unit_document` | Download a trail file |
+| `list_unit_payments` | Bank-matched rent trail |
+| `get_landlord_profile` | Stored letterhead (never invented) |
+| `list_bank_transactions` | Kontoauszug lines |
+| `list_mail_accounts` | Mailboxes (no passwords) |
+| `search_mail` / `read_mail` | Search and read mail |
+| `list_agent_notes` | Drive `/Agent` notes |
+| `create_nk_letter` | Server NK PDF |
 
 ## Environment
 

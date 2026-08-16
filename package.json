@@ -1,11 +1,12 @@
 {
   "name": "@achi/drive-mcp",
   "version": "1.0.0",
-  "description": "MCP server for Achi Drive — gives AI agents (Claude, Cursor, etc.) access to your end-to-end encrypted files.",
+  "description": "MCP server for Achi — Drive, Properties, Mail, Agent notes, NK letters.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "achi-drive-mcp": "dist/index.js"
+    "achi-drive-mcp": "dist/index.js",
+    "achi-mcp": "dist/index.js"
   },
   "files": ["dist", "README.md"],
   "scripts": {
