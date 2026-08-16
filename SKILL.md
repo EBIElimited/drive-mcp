@@ -18,7 +18,7 @@ The token sees **the same spaces and apps as the user**. Revoke it in Settings �
 ## Do this
 
 1. `whoami` then `list_teams`. Use `teamId` for Chi Ross / Elania.
-2. Properties: `list_units` → `get_unit` → `update_unit` for empty fields (squareMeters, rooms). Always pass `versionReason`. Bad write: `list_unit_versions` then `restore_unit`. Trail: `list_unit_documents` → `download_unit_document`. Wrong date/title: `update_unit_document`.
+2. Properties: `list_units` → `get_unit` → `update_unit` for empty fields (squareMeters, rooms). Always pass `versionReason`. Bad write: `list_unit_versions` then `restore_unit`. Trail: `list_unit_documents` → `create_unit_document` / `download_unit_document`. Wrong date/title: `update_unit_document`. Past tenant: occupancies with `leaseEnd`.
 3. Rent paid truth: `list_unit_payments` / `list_bank_transactions`. Do not invent payments.
 4. Letterhead: `get_landlord_profile`. Empty IBAN / Anschrift stay empty. Never invent them.
 5. Mail: `list_mail_accounts` → `search_mail` → `read_mail`. No passwords.

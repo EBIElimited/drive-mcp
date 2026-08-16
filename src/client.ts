@@ -315,6 +315,30 @@ export class AchiClient {
     )
   }
 
+  async createUnitDocument(
+    unitId: string,
+    body: {
+      title?: string
+      category?: string
+      documentDate?: string
+      notes?: string | null
+      fileName?: string
+      mimeType?: string
+      contentBase64?: string
+      driveFileId?: string
+      source?: string
+    },
+  ) {
+    return this.json<{ document: unknown }>(
+      `/v1/properties/units/${encodeURIComponent(unitId)}/documents`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    )
+  }
+
   async updateUnitDocument(
     unitId: string,
     docId: string,

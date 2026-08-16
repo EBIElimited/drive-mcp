@@ -547,6 +547,40 @@ server.tool(
 )
 
 server.tool(
+  'create_unit_document',
+  'Create a Properties trail document (NK letter, HV file, …). Send contentBase64 for the PDF/file. Use this instead of asking the user to re-attach. Uploading into Achi Properties/{unit} also creates a trail row.',
+  {
+    unitId: z.string().uuid(),
+    title: z.string().optional(),
+    category: z.string().optional().describe('lease | deposit | hausgeld | nebenkosten | deed | repair | energy | insurance | tax | correspondence | other'),
+    documentDate: z.string().optional().describe('YYYY-MM-DD or DD.MM.YYYY — the letter/receipt date, not 31 Dec of the settlement year'),
+    notes: z.string().optional(),
+    fileName: z.string().optional(),
+    mimeType: z.string().optional(),
+    contentBase64: z.string().optional().describe('Raw file bytes as base64'),
+    driveFileId: z.string().uuid().optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(
+        await client.createUnitDocument(args.unitId, {
+          title: args.title,
+          category: args.category,
+          documentDate: args.documentDate,
+          notes: args.notes,
+          fileName: args.fileName,
+          mimeType: args.mimeType,
+          contentBase64: args.contentBase64,
+          driveFileId: args.driveFileId,
+        }),
+      )
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
   'update_unit_document',
   'Patch a trail document’s title, documentDate (YYYY-MM-DD or DD.MM.YYYY), or notes. Use this for a wrong letter date — do not ask the user to edit the UI.',
   {

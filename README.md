@@ -62,6 +62,8 @@ ACHI_API_TOKEN=achi_pat_xxx npx -y github:EBIElimited/drive-mcp
 | `list_unit_versions` | Version history |
 | `restore_unit` | Revert a snapshot |
 | `list_unit_documents` | Trail (HV, heating, tax, letters) |
+| `create_unit_document` | Add a trail file (`contentBase64` or Drive file id) |
+| `update_unit_document` | Fix trail title / documentDate / notes |
 | `download_unit_document` | Download a trail file |
 | `list_unit_payments` | Bank-matched rent trail |
 | `get_landlord_profile` | Stored letterhead (never invented) |
