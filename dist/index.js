@@ -415,6 +415,51 @@ server.tool('list_unit_documents', 'List the Properties document trail for an ap
         return errorResult(err);
     }
 });
+server.tool('create_unit_document', 'Create a Properties trail document (NK letter, HV file, …). Send contentBase64 for the PDF/file. Use this instead of asking the user to re-attach. Uploading into Achi Properties/{unit} also creates a trail row.', {
+    unitId: z.string().uuid(),
+    title: z.string().optional(),
+    category: z.string().optional().describe('lease | deposit | hausgeld | nebenkosten | deed | repair | energy | insurance | tax | correspondence | other'),
+    documentDate: z.string().optional().describe('YYYY-MM-DD or DD.MM.YYYY — the letter/receipt date, not 31 Dec of the settlement year'),
+    notes: z.string().optional(),
+    fileName: z.string().optional(),
+    mimeType: z.string().optional(),
+    contentBase64: z.string().optional().describe('Raw file bytes as base64'),
+    driveFileId: z.string().uuid().optional(),
+}, async (args) => {
+    try {
+        return jsonText(await client.createUnitDocument(args.unitId, {
+            title: args.title,
+            category: args.category,
+            documentDate: args.documentDate,
+            notes: args.notes,
+            fileName: args.fileName,
+            mimeType: args.mimeType,
+            contentBase64: args.contentBase64,
+            driveFileId: args.driveFileId,
+        }));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('update_unit_document', 'Patch a trail document’s title, documentDate (YYYY-MM-DD or DD.MM.YYYY), or notes. Use this for a wrong letter date — do not ask the user to edit the UI.', {
+    unitId: z.string().uuid(),
+    docId: z.string().uuid(),
+    title: z.string().optional(),
+    documentDate: z.string().optional().describe('YYYY-MM-DD or DD.MM.YYYY — the letter/receipt date, not 31 Dec of the settlement year'),
+    notes: z.string().nullable().optional(),
+}, async (args) => {
+    try {
+        return jsonText(await client.updateUnitDocument(args.unitId, args.docId, {
+            title: args.title,
+            documentDate: args.documentDate,
+            notes: args.notes,
+        }));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
 server.tool('download_unit_document', 'Download one trail document (PDF/ODT). Use this instead of asking the user to re-attach HV or heating files.', { unitId: z.string().uuid(), docId: z.string().uuid() }, async ({ unitId, docId }) => {
     try {
         const content = await client.downloadUnitDocument(unitId, docId);
@@ -494,6 +539,30 @@ server.tool('read_mail', 'Read one mail message including plaintext body. No pas
 server.tool('list_agent_notes', 'List Drive /Agent notes in a space (agent.md, learnings/letters.md, …). Requires a content-access token.', { teamId: z.string().optional() }, async (args) => {
     try {
         return jsonText(await client.listAgentNotes(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('list_git_folders', 'List Drive folders that mirror a private git repo. Agents read the Drive copy — never ask for a GitHub token.', { teamId: z.string().optional() }, async (args) => {
+    try {
+        return jsonText(await client.listGitFolders(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('list_skills', 'List SKILL.md files mirrored from git folders in this space (e.g. novel-dialogue). Then read_file on the fileId.', { teamId: z.string().optional() }, async (args) => {
+    try {
+        return jsonText(await client.listSkills(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('read_skill', 'Find one mirrored skill by name (novel-dialogue) and return its Drive fileId. Use read_file next.', { name: z.string(), teamId: z.string().optional() }, async ({ name, teamId }) => {
+    try {
+        return jsonText(await client.getSkill(name, { teamId }));
     }
     catch (err) {
         return errorResult(err);

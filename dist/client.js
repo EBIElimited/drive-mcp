@@ -189,6 +189,20 @@ export class AchiClient {
     async listUnitDocuments(unitId) {
         return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/documents`);
     }
+    async createUnitDocument(unitId, body) {
+        return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/documents`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
+    async updateUnitDocument(unitId, docId, body) {
+        return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/documents/${encodeURIComponent(docId)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
     async downloadUnitDocument(unitId, docId) {
         const resp = await this.request(`/v1/properties/units/${encodeURIComponent(unitId)}/documents/${encodeURIComponent(docId)}/download`);
         const buf = new Uint8Array(await resp.arrayBuffer());
@@ -219,6 +233,15 @@ export class AchiClient {
     }
     async listAgentNotes(opts = {}) {
         return this.json('/v1/agent/notes', {}, opts);
+    }
+    async listGitFolders(opts = {}) {
+        return this.json('/v1/git-folders', {}, opts);
+    }
+    async listSkills(opts = {}) {
+        return this.json('/v1/skills', {}, opts);
+    }
+    async getSkill(name, opts = {}) {
+        return this.json(`/v1/skills/${encodeURIComponent(name)}`, {}, opts);
     }
     async createNkLetter(body) {
         const resp = await this.request('/v1/letters/nk', {
