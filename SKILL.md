@@ -5,7 +5,7 @@ Use Achi as the user’s account: spaces, Drive, Properties, Mail, Agent notes, 
 ## Auth
 
 ```
-ACHI_API_TOKEN=achi_pat_…     # Settings → Developer, content access on
+ACHI_API_TOKEN=achi_pat_…     # Settings → AI, content access on
 ACHI_API_URL=https://api.achi.cc   # optional
 ```
 
@@ -13,7 +13,7 @@ MCP: `npx -y @achi/drive-mcp`
 
 REST: `Authorization: Bearer achi_pat_…` against `/v1`.
 
-The token sees **the same spaces and apps as the user**. Revoke it in Settings.
+The token sees **the same spaces and apps as the user**. Revoke it in Settings → AI.
 
 ## Do this
 

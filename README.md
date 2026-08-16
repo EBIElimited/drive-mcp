@@ -4,7 +4,7 @@ MCP server for [Achi](https://achi.cc) — Hermes, Grok Build, Claude, Cursor. O
 
 ## Install + run
 
-You need an API token first. Sign in to Achi → **Settings → Developer API tokens** → create one with **"Allow file content access"** enabled. Copy the `achi_pat_…` token (it's only shown once).
+You need an API token first. Sign in to Achi → **Settings → AI** → create a key with **"Allow file content access"** enabled. Copy the `achi_pat_…` token (it's only shown once).
 
 ### Claude Desktop / Claude Code
 
@@ -80,7 +80,7 @@ ACHI_API_TOKEN=achi_pat_xxx npx @achi/drive-mcp
 
 ## Permissions
 
-The token grants the agent **whatever access you have** — personal files plus every team you're a member of. There's no per-folder scoping. Revoke the token at any time from Settings → Developer.
+The token grants the agent **whatever access you have** — personal files plus every team you're a member of. There's no per-folder scoping. Revoke the token at any time from Settings → AI.
 
 Tokens created without "Allow file content access" can only call metadata operations (`list_*`, `get_*`, `update_*` with non-name changes, `delete_*`). Content reads/writes and rename/search will return `METADATA_ONLY_TOKEN` errors.
 

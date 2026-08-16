@@ -7,7 +7,7 @@
  * upload, and manage files in the user's encrypted drive.
  *
  * Environment:
- *   ACHI_API_TOKEN  — achi_pat_* token from Settings → Developer
+ *   ACHI_API_TOKEN  — achi_pat_* token from Settings → AI
  *   ACHI_API_URL    — optional, defaults to https://api.achi.cc
  *
  * Usage:
@@ -25,7 +25,7 @@ const token = process.env.ACHI_API_TOKEN
 if (!token) {
   console.error(
     'ERROR: ACHI_API_TOKEN environment variable is required.\n' +
-      'Create a token at Achi → Settings → Developer API tokens (with content access enabled).',
+      'Create a token at Achi → Settings → AI (with content access enabled).',
   )
   process.exit(1)
 }

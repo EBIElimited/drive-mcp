@@ -8,7 +8,7 @@
     "achi-drive-mcp": "dist/index.js",
     "achi-mcp": "dist/index.js"
   },
-  "files": ["dist", "README.md"],
+  "files": ["dist", "README.md", "SKILL.md"],
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",

@@ -86,7 +86,7 @@ export class AchiClient {
     if (!apiUrl) throw new Error('apiUrl is required')
     if (!token) throw new Error('token is required')
     if (!token.startsWith('achi_pat_')) {
-      throw new Error('token must start with "achi_pat_" (create one in Settings → Developer API tokens)')
+      throw new Error('token must start with "achi_pat_" (create one in Settings → AI)')
     }
   }
 
