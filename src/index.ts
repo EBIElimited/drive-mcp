@@ -453,6 +453,87 @@ server.tool(
 )
 
 server.tool(
+  'update_unit',
+  'Write Properties fields (squareMeters, rooms, rent, tenant, notes, …). Snapshots the current row first so restore_unit can undo a bad write. Always pass versionReason. Use ifUpdatedAt from get_unit.updatedAt to avoid clobbering.',
+  {
+    id: z.string().uuid(),
+    squareMeters: z.string().optional(),
+    rooms: z.string().optional(),
+    name: z.string().optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    rentEuros: z.number().optional(),
+    nebenkostenEuros: z.number().optional(),
+    hausgeldEuros: z.number().optional(),
+    tenantName: z.string().optional(),
+    tenantEmail: z.string().optional(),
+    leaseStart: z.string().optional(),
+    purchasePriceEuros: z.number().nullable().optional(),
+    purchaseDate: z.string().optional(),
+    marketValueEuros: z.number().nullable().optional(),
+    marketValueDate: z.string().optional(),
+    marketValueSource: z.string().optional(),
+    notes: z.string().optional(),
+    todo: z.string().optional(),
+    extras: z.string().optional(),
+    rentAgreementNotes: z.string().optional(),
+    propertyManagement: z.string().optional(),
+    coOwnershipShare: z.string().optional(),
+    garage: z.string().optional(),
+    buildingYear: z.string().optional(),
+    heating: z.string().optional(),
+    energy: z.string().optional(),
+    lastRentIncrease: z.string().optional(),
+    versionReason: z.string().optional().describe('Why this write — stored on the snapshot'),
+    ifUpdatedAt: z.string().optional().describe('ISO updatedAt from get_unit — 409 if stale'),
+  },
+  async (args) => {
+    try {
+      const { id, ...body } = args
+      const payload: Record<string, unknown> = {}
+      for (const [k, v] of Object.entries(body)) {
+        if (v !== undefined) payload[k] = v
+      }
+      return jsonText(await client.updateUnit(id, payload))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'list_unit_versions',
+  'List Properties unit snapshots (newest first). Use restore_unit if an earlier write was wrong.',
+  {
+    unitId: z.string().uuid(),
+    limit: z.number().int().min(1).max(50).optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.listUnitVersions(args.unitId, { limit: args.limit }))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'restore_unit',
+  'Revert a Properties unit to a prior snapshot. The live row is snapshotted first so this restore can also be undone.',
+  {
+    unitId: z.string().uuid(),
+    versionId: z.string().uuid(),
+  },
+  async ({ unitId, versionId }) => {
+    try {
+      return jsonText(await client.restoreUnit(unitId, versionId))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
   'list_unit_documents',
   'List the Properties document trail for an apartment (HV, heating, tax, prior NK letters).',
   { unitId: z.string().uuid() },

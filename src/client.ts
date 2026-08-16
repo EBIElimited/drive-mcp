@@ -283,6 +283,32 @@ export class AchiClient {
     return this.json<{ unit: unknown }>(`/v1/properties/units/${encodeURIComponent(id)}`)
   }
 
+  async updateUnit(id: string, body: Record<string, unknown>) {
+    return this.json<{ unit: unknown; changedFields: string[]; version: unknown }>(
+      `/v1/properties/units/${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    )
+  }
+
+  async listUnitVersions(unitId: string, opts: { limit?: number } = {}) {
+    return this.json<{ unitId: string; unitName: string; versions: unknown[] }>(
+      `/v1/properties/units/${encodeURIComponent(unitId)}/versions`,
+      {},
+      opts.limit != null ? { limit: String(opts.limit) } : {},
+    )
+  }
+
+  async restoreUnit(unitId: string, versionId: string) {
+    return this.json<{ unit: unknown; restoredFrom: unknown; version: unknown }>(
+      `/v1/properties/units/${encodeURIComponent(unitId)}/versions/${encodeURIComponent(versionId)}/restore`,
+      { method: 'POST' },
+    )
+  }
+
   async listUnitDocuments(unitId: string) {
     return this.json<{ unitId: string; documents: unknown[] }>(
       `/v1/properties/units/${encodeURIComponent(unitId)}/documents`,
