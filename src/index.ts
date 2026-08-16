@@ -671,6 +671,45 @@ server.tool(
 )
 
 server.tool(
+  'list_git_folders',
+  'List Drive folders that mirror a private git repo. Agents read the Drive copy — never ask for a GitHub token.',
+  { teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.listGitFolders(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'list_skills',
+  'List SKILL.md files mirrored from git folders in this space (e.g. novel-dialogue). Then read_file on the fileId.',
+  { teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.listSkills(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'read_skill',
+  'Find one mirrored skill by name (novel-dialogue) and return its Drive fileId. Use read_file next.',
+  { name: z.string(), teamId: z.string().optional() },
+  async ({ name, teamId }) => {
+    try {
+      return jsonText(await client.getSkill(name, { teamId }))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
   'create_nk_letter',
   [
     'Compile a tenant Nebenkostenabrechnung PDF on the Achi server (no browser pdf.js).',

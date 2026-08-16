@@ -356,6 +356,18 @@ export class AchiClient {
     return this.json('/v1/agent/notes', {}, opts)
   }
 
+  async listGitFolders(opts: { teamId?: string } = {}) {
+    return this.json('/v1/git-folders', {}, opts)
+  }
+
+  async listSkills(opts: { teamId?: string } = {}) {
+    return this.json('/v1/skills', {}, opts)
+  }
+
+  async getSkill(name: string, opts: { teamId?: string } = {}) {
+    return this.json(`/v1/skills/${encodeURIComponent(name)}`, {}, opts)
+  }
+
   async createNkLetter(body: Record<string, unknown>): Promise<ContentBytes> {
     const resp = await this.request('/v1/letters/nk', {
       method: 'POST',
