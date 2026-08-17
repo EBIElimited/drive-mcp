@@ -425,10 +425,14 @@ server.tool(
 
 server.tool(
   'list_units',
-  'List Properties (Vermietung) apartments the user can see. Pass teamId for a space such as Chi Ross. scope=all lists every space.',
+  'List Properties (Vermietung) apartments the user can see. Pass teamId for a space such as Chi Ross. scope=all lists every space. financing filters by loanStatus.',
   {
     teamId: z.string().optional(),
     scope: z.enum(['all']).optional(),
+    financing: z
+      .enum(['debt_free', 'active', 'unknown', 'fixed_rate_soon', 'all'])
+      .optional()
+      .describe('Filter: debt_free, active, unknown, or fixed_rate_soon (Zinsbindung in 24 months)'),
   },
   async (args) => {
     try {
@@ -441,7 +445,7 @@ server.tool(
 
 server.tool(
   'get_unit',
-  'Load one apartment: tenant, rent, address, trail folder. Does not invent Anschrift or IBAN.',
+  'Load one apartment: tenant, rent, address, financing (loanStatus, hasActiveLoan, Grundschuld), trail folder. Does not invent Anschrift, IBAN, or remaining debt.',
   { id: z.string().uuid() },
   async ({ id }) => {
     try {
@@ -454,7 +458,7 @@ server.tool(
 
 server.tool(
   'update_unit',
-  'Write Properties fields (squareMeters, rooms, rent, tenant, notes, …). Snapshots the current row first so restore_unit can undo a bad write. Always pass versionReason. Use ifUpdatedAt from get_unit.updatedAt to avoid clobbering.',
+  'Write Properties fields (squareMeters, rooms, rent, tenant, loanStatus, bankName, remainingDebtEuros, grundschuldExists, notes, …). Snapshots the current row first so restore_unit can undo a bad write. Always pass versionReason. Never invent remaining debt. Use ifUpdatedAt from get_unit.updatedAt to avoid clobbering.',
   {
     id: z.string().uuid(),
     squareMeters: z.string().optional(),
@@ -484,6 +488,22 @@ server.tool(
     heating: z.string().optional(),
     energy: z.string().optional(),
     lastRentIncrease: z.string().optional(),
+    loanStatus: z
+      .enum(['debt_free', 'active', 'in_prolongation', 'unknown'])
+      .optional()
+      .describe('Structured financing status. Never invent remaining debt.'),
+    hasActiveLoan: z.boolean().optional(),
+    bankName: z.string().optional(),
+    loanBank: z.string().optional(),
+    remainingDebtEuros: z.number().nullable().optional(),
+    loanBalanceEuros: z.number().nullable().optional(),
+    monthlyPaymentEuros: z.number().nullable().optional(),
+    loanMonthlyPaymentEuros: z.number().nullable().optional(),
+    fixedRateEndDate: z.string().optional(),
+    loanFixedUntil: z.string().optional(),
+    grundschuldExists: z.boolean().nullable().optional(),
+    grundschuldAmountEuros: z.number().nullable().optional(),
+    loanNotes: z.string().optional(),
     versionReason: z.string().optional().describe('Why this write — stored on the snapshot'),
     ifUpdatedAt: z.string().optional().describe('ISO updatedAt from get_unit — 409 if stale'),
   },

@@ -275,8 +275,12 @@ export class AchiClient {
 
   // ── Properties / Mail / Agent / letters ────────────────────────────────
 
-  async listUnits(opts: { teamId?: string; scope?: 'all' } = {}) {
-    return this.json<{ scope: string; teamId: string | null; units: unknown[] }>('/v1/properties/units', {}, opts)
+  async listUnits(opts: { teamId?: string; scope?: 'all'; financing?: string } = {}) {
+    return this.json<{ scope: string; teamId: string | null; financing?: string; units: unknown[] }>(
+      '/v1/properties/units',
+      {},
+      opts,
+    )
   }
 
   async getUnit(id: string) {

@@ -56,9 +56,9 @@ ACHI_API_TOKEN=achi_pat_xxx npx -y github:EBIElimited/drive-mcp
 | `create_folder` | Make a new folder |
 | `update_folder` | Rename / move / star / trash / restore |
 | `delete_folder` | Recursive trash (default) or permanent delete |
-| `list_units` | Properties apartments (`teamId` / `scope=all`) |
-| `get_unit` | One apartment |
-| `update_unit` | Write sqm, rooms, rent, tenant… Snapshots first. |
+| `list_units` | Properties apartments (`teamId` / `scope=all` / `financing=debt_free`) |
+| `get_unit` | One apartment (includes loanStatus, Grundschuld) |
+| `update_unit` | Write sqm, rooms, rent, tenant, loanStatus… Snapshots first. Never invent remaining debt. |
 | `list_unit_versions` | Version history |
 | `restore_unit` | Revert a snapshot |
 | `list_unit_documents` | Trail (HV, heating, tax, letters) |
