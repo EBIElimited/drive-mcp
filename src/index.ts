@@ -444,6 +444,96 @@ server.tool(
 )
 
 server.tool(
+  'get_unit_financing',
+  'Document-based financing suggestions, named loans, and event history for one apartment. Apply a suggestion only after the user confirms. Never invent remaining debt.',
+  { unitId: z.string().uuid() },
+  async ({ unitId }) => {
+    try {
+      return jsonText(await client.getUnitFinancing(unitId))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'apply_financing_suggestion',
+  'Apply one financing suggestion from get_unit_financing after the user confirmed. Writes loanStatus / Grundschuld / remainingDebt only when the document supports it.',
+  { unitId: z.string().uuid(), key: z.string() },
+  async ({ unitId, key }) => {
+    try {
+      return jsonText(await client.applyFinancingSuggestion(unitId, key))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'dismiss_financing_suggestion',
+  'Dismiss a financing suggestion so it is not offered again.',
+  { unitId: z.string().uuid(), key: z.string() },
+  async ({ unitId, key }) => {
+    try {
+      return jsonText(await client.dismissFinancingSuggestion(unitId, key))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'extract_loan_from_docs',
+  'Read Restschuld from a Tilgungsplan PDF in the property trail. Use dryRun=true first. Does not invent an amount if the PDF has no labeled Restschuld.',
+  {
+    unitId: z.string().uuid(),
+    dryRun: z.boolean().optional(),
+    force: z.boolean().optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.extractLoanFromDocs(args.unitId, { dryRun: args.dryRun, force: args.force }))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'list_unit_loans',
+  'Named loans on a unit (more than one bank).',
+  { unitId: z.string().uuid() },
+  async ({ unitId }) => {
+    try {
+      return jsonText(await client.listUnitLoans(unitId))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'create_unit_loan',
+  'Add a named loan on a unit. Never invent remaining debt.',
+  {
+    unitId: z.string().uuid(),
+    bankName: z.string().optional(),
+    status: z.enum(['debt_free', 'active', 'in_prolongation', 'unknown']).optional(),
+    remainingDebtEuros: z.number().nullable().optional(),
+    monthlyPaymentEuros: z.number().nullable().optional(),
+    fixedRateEndDate: z.string().optional(),
+    notes: z.string().optional(),
+  },
+  async ({ unitId, ...body }) => {
+    try {
+      return jsonText(await client.createUnitLoan(unitId, body))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
   'get_unit',
   'Load one apartment: tenant, rent, address, financing (loanStatus, hasActiveLoan, Grundschuld), trail folder. Does not invent Anschrift, IBAN, or remaining debt.',
   { id: z.string().uuid() },

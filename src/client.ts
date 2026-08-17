@@ -287,6 +287,44 @@ export class AchiClient {
     return this.json<{ unit: unknown }>(`/v1/properties/units/${encodeURIComponent(id)}`)
   }
 
+  async getUnitFinancing(id: string) {
+    return this.json<unknown>(`/v1/properties/units/${encodeURIComponent(id)}/financing`)
+  }
+
+  async applyFinancingSuggestion(unitId: string, key: string) {
+    return this.json<unknown>(
+      `/v1/properties/units/${encodeURIComponent(unitId)}/financing/suggestions/${encodeURIComponent(key)}/apply`,
+      { method: 'POST' },
+    )
+  }
+
+  async dismissFinancingSuggestion(unitId: string, key: string) {
+    return this.json<unknown>(
+      `/v1/properties/units/${encodeURIComponent(unitId)}/financing/suggestions/${encodeURIComponent(key)}/dismiss`,
+      { method: 'POST' },
+    )
+  }
+
+  async extractLoanFromDocs(unitId: string, body: { force?: boolean; dryRun?: boolean } = {}) {
+    return this.json<unknown>(`/v1/properties/units/${encodeURIComponent(unitId)}/loan-from-docs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  async listUnitLoans(unitId: string) {
+    return this.json<{ loans: unknown[] }>(`/v1/properties/units/${encodeURIComponent(unitId)}/loans`)
+  }
+
+  async createUnitLoan(unitId: string, body: Record<string, unknown>) {
+    return this.json<{ loan: unknown }>(`/v1/properties/units/${encodeURIComponent(unitId)}/loans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
   async updateUnit(id: string, body: Record<string, unknown>) {
     return this.json<{ unit: unknown; changedFields: string[]; version: unknown }>(
       `/v1/properties/units/${encodeURIComponent(id)}`,

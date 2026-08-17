@@ -59,6 +59,10 @@ ACHI_API_TOKEN=achi_pat_xxx npx -y github:EBIElimited/drive-mcp
 | `list_units` | Properties apartments (`teamId` / `scope=all` / `financing=debt_free`) |
 | `get_unit` | One apartment (includes loanStatus, Grundschuld) |
 | `update_unit` | Write sqm, rooms, rent, tenant, loanStatus… Snapshots first. Never invent remaining debt. |
+| `get_unit_financing` | Suggestions from trail titles, loans, events |
+| `apply_financing_suggestion` | Apply a suggestion after the user confirms |
+| `extract_loan_from_docs` | Restschuld from Tilgungsplan PDF (`dryRun` first) |
+| `list_unit_loans` / `create_unit_loan` | Multiple loans per unit |
 | `list_unit_versions` | Version history |
 | `restore_unit` | Revert a snapshot |
 | `list_unit_documents` | Trail (HV, heating, tax, letters) |
