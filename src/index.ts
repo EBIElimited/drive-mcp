@@ -991,6 +991,72 @@ server.tool(
   },
 )
 
+server.tool(
+  'list_property_visits',
+  'List Besichtigungsfahrten (viewing trips). Year totals count completed trips only. Never invent kilometres.',
+  {
+    teamId: z.string().optional(),
+    year: z.number().int().min(2000).max(2100).optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.listPropertyVisits(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'create_property_visit',
+  'Log a viewing trip. Pass the driven kilometres — do not invent distance. Default deductible is 0.30 €/km on completed trips.',
+  {
+    teamId: z.string().optional(),
+    visitedOn: z.string().optional().describe('YYYY-MM-DD'),
+    title: z.string().optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    startAddress: z.string().optional(),
+    distanceKm: z.number().nullable().optional().describe('Round-trip kilometres as driven. Do not invent.'),
+    kmRateEuros: z.number().optional().describe('Default 0.30'),
+    purpose: z.enum(['viewing', 'follow_up', 'handover', 'other']).optional(),
+    status: z.enum(['planned', 'done', 'cancelled']).optional(),
+    notes: z.string().optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.createPropertyVisit(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'update_property_visit',
+  'Update a viewing trip (status, distanceKm, notes). Never invent kilometres.',
+  {
+    id: z.string().uuid(),
+    visitedOn: z.string().optional(),
+    title: z.string().optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    startAddress: z.string().optional(),
+    distanceKm: z.number().nullable().optional(),
+    kmRateEuros: z.number().optional(),
+    purpose: z.enum(['viewing', 'follow_up', 'handover', 'other']).optional(),
+    status: z.enum(['planned', 'done', 'cancelled']).optional(),
+    notes: z.string().optional(),
+  },
+  async ({ id, ...body }) => {
+    try {
+      return jsonText(await client.updatePropertyVisit(id, body))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
 // ── Start ───────────────────────────────────────────────────────────────────
 
 async function main() {

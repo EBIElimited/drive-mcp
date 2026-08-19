@@ -470,6 +470,33 @@ export class AchiClient {
     }
   }
 
+  async listPropertyVisits(opts: { teamId?: string; year?: number } = {}) {
+    return this.json(
+      '/v1/properties/visits',
+      {},
+      {
+        teamId: opts.teamId,
+        year: opts.year != null ? String(opts.year) : undefined,
+      },
+    )
+  }
+
+  async createPropertyVisit(body: Record<string, unknown>) {
+    return this.json('/v1/properties/visits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  async updatePropertyVisit(id: string, body: Record<string, unknown>) {
+    return this.json(`/v1/properties/visits/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
   async listNkSettlements(unitId: string, opts: { year?: number } = {}) {
     return this.json(
       `/v1/properties/units/${encodeURIComponent(unitId)}/nk`,

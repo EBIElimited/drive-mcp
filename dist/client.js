@@ -173,6 +173,32 @@ export class AchiClient {
     async getUnit(id) {
         return this.json(`/v1/properties/units/${encodeURIComponent(id)}`);
     }
+    async getUnitFinancing(id) {
+        return this.json(`/v1/properties/units/${encodeURIComponent(id)}/financing`);
+    }
+    async applyFinancingSuggestion(unitId, key) {
+        return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/financing/suggestions/${encodeURIComponent(key)}/apply`, { method: 'POST' });
+    }
+    async dismissFinancingSuggestion(unitId, key) {
+        return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/financing/suggestions/${encodeURIComponent(key)}/dismiss`, { method: 'POST' });
+    }
+    async extractLoanFromDocs(unitId, body = {}) {
+        return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/loan-from-docs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
+    async listUnitLoans(unitId) {
+        return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/loans`);
+    }
+    async createUnitLoan(unitId, body) {
+        return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/loans`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
     async updateUnit(id, body) {
         return this.json(`/v1/properties/units/${encodeURIComponent(id)}`, {
             method: 'PATCH',
@@ -258,6 +284,26 @@ export class AchiClient {
             documentId: resp.headers.get('x-achi-document-id') || undefined,
             settlementId: resp.headers.get('x-achi-nk-settlement-id') || undefined,
         };
+    }
+    async listPropertyVisits(opts = {}) {
+        return this.json('/v1/properties/visits', {}, {
+            teamId: opts.teamId,
+            year: opts.year != null ? String(opts.year) : undefined,
+        });
+    }
+    async createPropertyVisit(body) {
+        return this.json('/v1/properties/visits', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
+    async updatePropertyVisit(id, body) {
+        return this.json(`/v1/properties/visits/${encodeURIComponent(id)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
     }
     async listNkSettlements(unitId, opts = {}) {
         return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/nk`, {}, opts.year != null ? { year: String(opts.year) } : {});

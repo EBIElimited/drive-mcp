@@ -72,6 +72,7 @@ ACHI_API_TOKEN=achi_pat_xxx npx -y github:EBIElimited/drive-mcp
 | `list_unit_payments` | Bank-matched rent trail |
 | `get_landlord_profile` | Stored letterhead (never invented) |
 | `list_bank_transactions` | Kontoauszug lines |
+| `list_property_visits` / `create_property_visit` / `update_property_visit` | Besichtigungsfahrten (never invent km) |
 | `list_mail_accounts` | Mailboxes (no passwords) |
 | `search_mail` / `read_mail` | Search and read mail |
 | `list_agent_notes` | Drive `/Agent` notes |

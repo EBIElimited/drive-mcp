@@ -321,9 +321,13 @@ server.tool('delete_folder', 'Move a folder to trash (recursive — all descenda
     }
 });
 // ── Properties / Mail / Agent / letters ─────────────────────────────────────
-server.tool('list_units', 'List Properties (Vermietung) apartments the user can see. Pass teamId for a space such as Chi Ross. scope=all lists every space.', {
+server.tool('list_units', 'List Properties (Vermietung) apartments the user can see. Pass teamId for a space such as Chi Ross. scope=all lists every space. financing filters by loanStatus.', {
     teamId: z.string().optional(),
     scope: z.enum(['all']).optional(),
+    financing: z
+        .enum(['debt_free', 'active', 'unknown', 'fixed_rate_soon', 'all'])
+        .optional()
+        .describe('Filter: debt_free, active, unknown, or fixed_rate_soon (Zinsbindung in 24 months)'),
 }, async (args) => {
     try {
         return jsonText(await client.listUnits(args));
@@ -332,7 +336,67 @@ server.tool('list_units', 'List Properties (Vermietung) apartments the user can 
         return errorResult(err);
     }
 });
-server.tool('get_unit', 'Load one apartment: tenant, rent, address, trail folder. Does not invent Anschrift or IBAN.', { id: z.string().uuid() }, async ({ id }) => {
+server.tool('get_unit_financing', 'Document-based financing suggestions, named loans, and event history for one apartment. Apply a suggestion only after the user confirms. Never invent remaining debt.', { unitId: z.string().uuid() }, async ({ unitId }) => {
+    try {
+        return jsonText(await client.getUnitFinancing(unitId));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('apply_financing_suggestion', 'Apply one financing suggestion from get_unit_financing after the user confirmed. Writes loanStatus / Grundschuld / remainingDebt only when the document supports it.', { unitId: z.string().uuid(), key: z.string() }, async ({ unitId, key }) => {
+    try {
+        return jsonText(await client.applyFinancingSuggestion(unitId, key));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('dismiss_financing_suggestion', 'Dismiss a financing suggestion so it is not offered again.', { unitId: z.string().uuid(), key: z.string() }, async ({ unitId, key }) => {
+    try {
+        return jsonText(await client.dismissFinancingSuggestion(unitId, key));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('extract_loan_from_docs', 'Read Restschuld from a Tilgungsplan PDF in the property trail. Use dryRun=true first. Does not invent an amount if the PDF has no labeled Restschuld.', {
+    unitId: z.string().uuid(),
+    dryRun: z.boolean().optional(),
+    force: z.boolean().optional(),
+}, async (args) => {
+    try {
+        return jsonText(await client.extractLoanFromDocs(args.unitId, { dryRun: args.dryRun, force: args.force }));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('list_unit_loans', 'Named loans on a unit (more than one bank).', { unitId: z.string().uuid() }, async ({ unitId }) => {
+    try {
+        return jsonText(await client.listUnitLoans(unitId));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('create_unit_loan', 'Add a named loan on a unit. Never invent remaining debt.', {
+    unitId: z.string().uuid(),
+    bankName: z.string().optional(),
+    status: z.enum(['debt_free', 'active', 'in_prolongation', 'unknown']).optional(),
+    remainingDebtEuros: z.number().nullable().optional(),
+    monthlyPaymentEuros: z.number().nullable().optional(),
+    fixedRateEndDate: z.string().optional(),
+    notes: z.string().optional(),
+}, async ({ unitId, ...body }) => {
+    try {
+        return jsonText(await client.createUnitLoan(unitId, body));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('get_unit', 'Load one apartment: tenant, rent, address, financing (loanStatus, hasActiveLoan, Grundschuld), trail folder. Does not invent Anschrift, IBAN, or remaining debt.', { id: z.string().uuid() }, async ({ id }) => {
     try {
         return jsonText(await client.getUnit(id));
     }
@@ -340,7 +404,7 @@ server.tool('get_unit', 'Load one apartment: tenant, rent, address, trail folder
         return errorResult(err);
     }
 });
-server.tool('update_unit', 'Write Properties fields (squareMeters, rooms, rent, tenant, notes, …). Snapshots the current row first so restore_unit can undo a bad write. Always pass versionReason. Use ifUpdatedAt from get_unit.updatedAt to avoid clobbering.', {
+server.tool('update_unit', 'Write Properties fields (squareMeters, rooms, rent, tenant, loanStatus, bankName, remainingDebtEuros, grundschuldExists, notes, …). Snapshots the current row first so restore_unit can undo a bad write. Always pass versionReason. Never invent remaining debt. Use ifUpdatedAt from get_unit.updatedAt to avoid clobbering.', {
     id: z.string().uuid(),
     squareMeters: z.string().optional(),
     rooms: z.string().optional(),
@@ -369,6 +433,22 @@ server.tool('update_unit', 'Write Properties fields (squareMeters, rooms, rent, 
     heating: z.string().optional(),
     energy: z.string().optional(),
     lastRentIncrease: z.string().optional(),
+    loanStatus: z
+        .enum(['debt_free', 'active', 'in_prolongation', 'unknown'])
+        .optional()
+        .describe('Structured financing status. Never invent remaining debt.'),
+    hasActiveLoan: z.boolean().optional(),
+    bankName: z.string().optional(),
+    loanBank: z.string().optional(),
+    remainingDebtEuros: z.number().nullable().optional(),
+    loanBalanceEuros: z.number().nullable().optional(),
+    monthlyPaymentEuros: z.number().nullable().optional(),
+    loanMonthlyPaymentEuros: z.number().nullable().optional(),
+    fixedRateEndDate: z.string().optional(),
+    loanFixedUntil: z.string().optional(),
+    grundschuldExists: z.boolean().nullable().optional(),
+    grundschuldAmountEuros: z.number().nullable().optional(),
+    loanNotes: z.string().optional(),
     versionReason: z.string().optional().describe('Why this write — stored on the snapshot'),
     ifUpdatedAt: z.string().optional().describe('ISO updatedAt from get_unit — 409 if stale'),
 }, async (args) => {
@@ -657,6 +737,57 @@ server.tool('update_nk_settlement', 'Patch one NK settlement (status, amounts, n
             notes: args.notes,
             documentId: args.documentId,
         }));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('list_property_visits', 'List Besichtigungsfahrten (viewing trips). Year totals count completed trips only. Never invent kilometres.', {
+    teamId: z.string().optional(),
+    year: z.number().int().min(2000).max(2100).optional(),
+}, async (args) => {
+    try {
+        return jsonText(await client.listPropertyVisits(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('create_property_visit', 'Log a viewing trip. Pass the driven kilometres — do not invent distance. Default deductible is 0.30 €/km on completed trips.', {
+    teamId: z.string().optional(),
+    visitedOn: z.string().optional().describe('YYYY-MM-DD'),
+    title: z.string().optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    startAddress: z.string().optional(),
+    distanceKm: z.number().nullable().optional().describe('Round-trip kilometres as driven. Do not invent.'),
+    kmRateEuros: z.number().optional().describe('Default 0.30'),
+    purpose: z.enum(['viewing', 'follow_up', 'handover', 'other']).optional(),
+    status: z.enum(['planned', 'done', 'cancelled']).optional(),
+    notes: z.string().optional(),
+}, async (args) => {
+    try {
+        return jsonText(await client.createPropertyVisit(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('update_property_visit', 'Update a viewing trip (status, distanceKm, notes). Never invent kilometres.', {
+    id: z.string().uuid(),
+    visitedOn: z.string().optional(),
+    title: z.string().optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    startAddress: z.string().optional(),
+    distanceKm: z.number().nullable().optional(),
+    kmRateEuros: z.number().optional(),
+    purpose: z.enum(['viewing', 'follow_up', 'handover', 'other']).optional(),
+    status: z.enum(['planned', 'done', 'cancelled']).optional(),
+    notes: z.string().optional(),
+}, async ({ id, ...body }) => {
+    try {
+        return jsonText(await client.updatePropertyVisit(id, body));
     }
     catch (err) {
         return errorResult(err);
