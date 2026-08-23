@@ -744,7 +744,7 @@ server.tool(
 
 server.tool(
   'list_unit_payments',
-  'Bank-statement payment trail for an apartment (cold/warm/NK). Source of rent-paid truth.',
+  'Bank-statement payment trail for an apartment (cold/warm/NK). GET only — do not PATCH. Amount corrections belong in Achi Zahlungen / the matching job.',
   {
     unitId: z.string().uuid(),
     from: z.string().optional().describe('YYYY-MM'),
