@@ -2,6 +2,8 @@
  * Thin HTTP client over the Achi Drive /v1 REST API.
  * Translates JSON responses to typed objects; throws on non-2xx.
  */
+/** MCP upload_file (text/base64) hard cap. Larger files: upload_file_from_path. */
+export const INLINE_UPLOAD_MAX_BYTES = 8 * 1024 * 1024;
 export class AchiApiError extends Error {
     status;
     code;
@@ -126,28 +128,14 @@ export class AchiClient {
     }
     // ── Mutations ───────────────────────────────────────────────────────────
     async uploadFile(opts) {
-        const SINGLE_MAX = 80 * 1024 * 1024;
-        if (opts.bytes.byteLength <= SINGLE_MAX) {
-            const headers = {
-                'Content-Type': opts.mimeType || 'application/octet-stream',
-                'Content-Length': String(opts.bytes.byteLength),
-            };
-            return this.json('/v1/files', 
-            // Uint8Array is a valid fetch body in Node 18+ undici; cast to satisfy TS
-            // without pulling in the entire DOM lib.
-            { method: 'POST', body: opts.bytes, headers }, { name: opts.name, parentFolderId: opts.parentFolderId, teamId: opts.teamId });
+        if (opts.bytes.byteLength > INLINE_UPLOAD_MAX_BYTES) {
+            throw new AchiApiError(413, 'USE_UPLOAD_FILE_FROM_PATH', `upload_file is for small text/base64 only (max ${INLINE_UPLOAD_MAX_BYTES} bytes). This payload is ${opts.bytes.byteLength} bytes. Use upload_file_from_path with a local disk path — it PUTs 5 MiB plaintext chunks. Do not base64 a zip.`);
         }
-        return this.uploadFileChunked({
-            name: opts.name,
-            sizeBytes: opts.bytes.byteLength,
-            mimeType: opts.mimeType,
-            parentFolderId: opts.parentFolderId,
-            teamId: opts.teamId,
-            readChunk: async (index, chunkSize) => {
-                const start = index * chunkSize;
-                return opts.bytes.subarray(start, start + chunkSize);
-            },
-        });
+        const headers = {
+            'Content-Type': opts.mimeType || 'application/octet-stream',
+            'Content-Length': String(opts.bytes.byteLength),
+        };
+        return this.json('/v1/files', { method: 'POST', body: opts.bytes, headers }, { name: opts.name, parentFolderId: opts.parentFolderId, teamId: opts.teamId });
     }
     async uploadFileFromPath(opts) {
         const { open, stat } = await import('node:fs/promises');

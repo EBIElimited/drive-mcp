@@ -17,7 +17,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
-import { AchiClient, AchiApiError, type ContentBytes } from './client.js'
+import { AchiClient, AchiApiError, INLINE_UPLOAD_MAX_BYTES, type ContentBytes } from './client.js'
 
 // ── Configuration ───────────────────────────────────────────────────────────
 
@@ -310,33 +310,8 @@ server.tool(
 // ── Mutations ───────────────────────────────────────────────────────────────
 
 server.tool(
-  'upload_file',
-  'Upload a small file from text or base64. Do not base64 multi-GB files — use upload_file_from_path.',
-  {
-    name: z.string().min(1).max(512).describe('Filename including extension, e.g. "notes.md".'),
-    content: z.string().describe('File content. Either UTF-8 text or base64 (use contentEncoding to specify).'),
-    contentEncoding: z.enum(['text', 'base64']).default('text'),
-    mimeType: z.string().default('application/octet-stream'),
-    parentFolderId: z.string().uuid().optional().describe('Folder to upload into. Omit for root.'),
-    teamId: z.string().optional().describe('Team space to upload into. Omit for personal drive.'),
-  },
-  async ({ name, content, contentEncoding, mimeType, parentFolderId, teamId }) => {
-    try {
-      const bytes =
-        contentEncoding === 'base64'
-          ? new Uint8Array(Buffer.from(content, 'base64'))
-          : new TextEncoder().encode(content)
-      const result = await client.uploadFile({ name, bytes, mimeType, parentFolderId, teamId })
-      return jsonText(result)
-    } catch (err) {
-      return errorResult(err)
-    }
-  },
-)
-
-server.tool(
   'upload_file_from_path',
-  'Upload a local file (including multi-GB zips) via 5 MB chunks. Cloudflare rejects a single POST over ~100 MB.',
+  'THE large-file uploader. Pass a local disk path (zips, videos, anything). Streams 5 MiB plaintext chunks. Use this for anything over a few MB — never base64 a zip.',
   {
     path: z.string().min(1).describe('Absolute path on this machine.'),
     name: z.string().min(1).max(512).optional().describe('Drive filename. Defaults to the path basename.'),
@@ -353,6 +328,38 @@ server.tool(
         parentFolderId,
         teamId,
       })
+      return jsonText(result)
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'upload_file',
+  `SMALL FILES ONLY (under ${INLINE_UPLOAD_MAX_BYTES} bytes). Text or base64 notes. Refuses larger blobs — use upload_file_from_path. Never base64 a zip.`,
+  {
+    name: z.string().min(1).max(512).describe('Filename including extension, e.g. "notes.md".'),
+    content: z.string().describe('UTF-8 text or base64 of a SMALL file only. For disk files use upload_file_from_path.'),
+    contentEncoding: z.enum(['text', 'base64']).default('text'),
+    mimeType: z.string().default('application/octet-stream'),
+    parentFolderId: z.string().uuid().optional().describe('Folder to upload into. Omit for root.'),
+    teamId: z.string().optional().describe('Team space to upload into. Omit for personal drive.'),
+  },
+  async ({ name, content, contentEncoding, mimeType, parentFolderId, teamId }) => {
+    try {
+      if (content.length > INLINE_UPLOAD_MAX_BYTES * 2) {
+        throw new AchiApiError(
+          413,
+          'USE_UPLOAD_FILE_FROM_PATH',
+          `upload_file refuses large blobs (${content.length} chars). Write the file to disk and call upload_file_from_path. Do not base64 a zip.`,
+        )
+      }
+      const bytes =
+        contentEncoding === 'base64'
+          ? new Uint8Array(Buffer.from(content, 'base64'))
+          : new TextEncoder().encode(content)
+      const result = await client.uploadFile({ name, bytes, mimeType, parentFolderId, teamId })
       return jsonText(result)
     } catch (err) {
       return errorResult(err)

@@ -18,7 +18,7 @@ The token sees **the same spaces and apps as the user**. Revoke it in Settings �
 ## Do this
 
 1. `whoami` then `list_teams`. Use `teamId` for Chi Ross / Elania.
-2. Drive: `upload_file` is text/base64 only. Multi-GB files (a 12 GB zip) use `upload_file_from_path`, or REST `POST /v1/files/uploads` + 5 MB chunk PUTs. A single `POST /v1/files` is rejected by Cloudflare over ~100 MB (413).
+2. Drive uploads: `upload_file_from_path` for anything on disk (zips, videos). `upload_file` is small text/base64 only and refuses large blobs. REST: never POST a whole zip to `/v1/files` (Cloudflare 413). Use `POST /v1/files/uploads` then PUT exactly 5 MiB **plaintext** chunks (0-based). `User-Agent: Achi-API/1` — urllib is 1010.
 2b. Properties: `list_units` → `get_unit` → `update_unit` for empty fields (squareMeters, rooms, loanStatus). Always pass `versionReason`. Financing: `get_unit_financing` then `apply_financing_suggestion` only after the user confirms. Restschuld: `extract_loan_from_docs` with `dryRun` first. Never invent remaining debt. Filter: `list_units` `financing=debt_free`. Bad write: `list_unit_versions` then `restore_unit`. Trail: `list_unit_documents` → `create_unit_document` / `download_unit_document`. Wrong date/title: `update_unit_document`. Past tenant: occupancies with `leaseEnd`. Viewing trips: `list_property_visits` / `create_property_visit`. Never invent kilometres.
 3. Rent paid truth: `list_unit_payments` / `list_bank_transactions`. Do not invent payments.
 4. Letterhead: `get_landlord_profile`. Empty IBAN / Anschrift stay empty. Never invent them.
