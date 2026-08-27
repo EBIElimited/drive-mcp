@@ -50,7 +50,8 @@ ACHI_API_TOKEN=achi_pat_xxx npx -y github:EBIElimited/drive-mcp
 | `read_file` | Download file content (text inline, images as MCP image, other as resource) |
 | `read_file_text` | Convenience: read a file decoded as UTF-8 |
 | `read_thumbnail` | JPEG thumbnail for images/videos |
-| `upload_file` | Create a file from text or base64 |
+| `upload_file` | Create a small file from text or base64 |
+| `upload_file_from_path` | Upload a local file in 5 MB chunks (use this for multi-GB zips) |
 | `update_file` | Rename / move / star / trash / restore |
 | `delete_file` | Trash (default) or permanent delete |
 | `create_folder` | Make a new folder |

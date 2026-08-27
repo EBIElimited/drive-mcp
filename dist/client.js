@@ -126,14 +126,89 @@ export class AchiClient {
     }
     // ── Mutations ───────────────────────────────────────────────────────────
     async uploadFile(opts) {
-        const headers = {
-            'Content-Type': opts.mimeType || 'application/octet-stream',
-            'Content-Length': String(opts.bytes.length),
-        };
-        return this.json('/v1/files', 
-        // Uint8Array is a valid fetch body in Node 18+ undici; cast to satisfy TS
-        // without pulling in the entire DOM lib.
-        { method: 'POST', body: opts.bytes, headers }, { name: opts.name, parentFolderId: opts.parentFolderId, teamId: opts.teamId });
+        const SINGLE_MAX = 80 * 1024 * 1024;
+        if (opts.bytes.byteLength <= SINGLE_MAX) {
+            const headers = {
+                'Content-Type': opts.mimeType || 'application/octet-stream',
+                'Content-Length': String(opts.bytes.byteLength),
+            };
+            return this.json('/v1/files', 
+            // Uint8Array is a valid fetch body in Node 18+ undici; cast to satisfy TS
+            // without pulling in the entire DOM lib.
+            { method: 'POST', body: opts.bytes, headers }, { name: opts.name, parentFolderId: opts.parentFolderId, teamId: opts.teamId });
+        }
+        return this.uploadFileChunked({
+            name: opts.name,
+            sizeBytes: opts.bytes.byteLength,
+            mimeType: opts.mimeType,
+            parentFolderId: opts.parentFolderId,
+            teamId: opts.teamId,
+            readChunk: async (index, chunkSize) => {
+                const start = index * chunkSize;
+                return opts.bytes.subarray(start, start + chunkSize);
+            },
+        });
+    }
+    async uploadFileFromPath(opts) {
+        const { open, stat } = await import('node:fs/promises');
+        const { basename } = await import('node:path');
+        const st = await stat(opts.path);
+        if (!st.isFile())
+            throw new Error(`Not a file: ${opts.path}`);
+        const name = (opts.name ?? basename(opts.path)).trim();
+        const fh = await open(opts.path, 'r');
+        try {
+            return await this.uploadFileChunked({
+                name,
+                sizeBytes: st.size,
+                mimeType: opts.mimeType,
+                parentFolderId: opts.parentFolderId,
+                teamId: opts.teamId,
+                readChunk: async (index, chunkSize) => {
+                    const buf = Buffer.alloc(chunkSize);
+                    const { bytesRead } = await fh.read(buf, 0, chunkSize, index * chunkSize);
+                    return new Uint8Array(buf.buffer, buf.byteOffset, bytesRead);
+                },
+            });
+        }
+        finally {
+            await fh.close();
+        }
+    }
+    async uploadFileChunked(opts) {
+        const session = await this.json('/v1/files/uploads', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: opts.name,
+                sizeBytes: opts.sizeBytes,
+                mimeType: opts.mimeType,
+                parentFolderId: opts.parentFolderId ?? null,
+                teamId: opts.teamId ?? null,
+            }),
+        });
+        const concurrency = Math.min(4, session.chunkCount);
+        let next = 0;
+        const workers = Array.from({ length: concurrency }, async () => {
+            while (true) {
+                const i = next++;
+                if (i >= session.chunkCount)
+                    return;
+                const chunk = await opts.readChunk(i, session.chunkSize);
+                await this.request(`/v1/files/uploads/${session.uploadId}/chunks/${i}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                        'Content-Length': String(chunk.byteLength),
+                    },
+                    body: chunk,
+                });
+            }
+        });
+        await Promise.all(workers);
+        return this.json(`/v1/files/uploads/${session.uploadId}/complete`, {
+            method: 'POST',
+        });
     }
     async patchFile(id, body) {
         return this.json(`/v1/files/${encodeURIComponent(id)}`, {

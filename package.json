@@ -1,6 +1,6 @@
 {
   "name": "@achi/drive-mcp",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "MCP server for Achi — Drive, Properties (versioned writes), Mail, Agent notes, NK letters.",
   "repository": {
     "type": "git",

@@ -239,7 +239,7 @@ server.tool('read_thumbnail', 'Get the JPEG thumbnail of a file (if it has one).
     }
 });
 // ── Mutations ───────────────────────────────────────────────────────────────
-server.tool('upload_file', 'Upload a new file. Provide content as base64 (for binaries) or text. Set mimeType for proper handling.', {
+server.tool('upload_file', 'Upload a small file from text or base64. Do not base64 multi-GB files — use upload_file_from_path.', {
     name: z.string().min(1).max(512).describe('Filename including extension, e.g. "notes.md".'),
     content: z.string().describe('File content. Either UTF-8 text or base64 (use contentEncoding to specify).'),
     contentEncoding: z.enum(['text', 'base64']).default('text'),
@@ -252,6 +252,27 @@ server.tool('upload_file', 'Upload a new file. Provide content as base64 (for bi
             ? new Uint8Array(Buffer.from(content, 'base64'))
             : new TextEncoder().encode(content);
         const result = await client.uploadFile({ name, bytes, mimeType, parentFolderId, teamId });
+        return jsonText(result);
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('upload_file_from_path', 'Upload a local file (including multi-GB zips) via 5 MB chunks. Cloudflare rejects a single POST over ~100 MB.', {
+    path: z.string().min(1).describe('Absolute path on this machine.'),
+    name: z.string().min(1).max(512).optional().describe('Drive filename. Defaults to the path basename.'),
+    mimeType: z.string().optional(),
+    parentFolderId: z.string().uuid().optional().describe('Folder to upload into. Omit for root.'),
+    teamId: z.string().optional().describe('Team space. Omit for personal drive.'),
+}, async ({ path, name, mimeType, parentFolderId, teamId }) => {
+    try {
+        const result = await client.uploadFileFromPath({
+            path,
+            name,
+            mimeType,
+            parentFolderId,
+            teamId,
+        });
         return jsonText(result);
     }
     catch (err) {
@@ -562,7 +583,7 @@ server.tool('download_unit_document', 'Download one trail document (PDF/ODT). Us
         return errorResult(err);
     }
 });
-server.tool('list_unit_payments', 'Bank-statement payment trail for an apartment (cold/warm/NK). Source of rent-paid truth.', {
+server.tool('list_unit_payments', 'Bank-statement payment trail for an apartment (cold/warm/NK). GET only — do not PATCH. Amount corrections belong in Achi Zahlungen / the matching job.', {
     unitId: z.string().uuid(),
     from: z.string().optional().describe('YYYY-MM'),
     to: z.string().optional().describe('YYYY-MM'),
