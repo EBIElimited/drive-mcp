@@ -113,9 +113,9 @@ server.tool('list_teams', "List all teams the user is a member of, with their ro
     }
 });
 // ── Listing ─────────────────────────────────────────────────────────────────
-server.tool('list_files', 'List files and folders. Omit parentFolderId for the root. Pass teamId to list inside a team. Supports cursor-based pagination via the returned nextCursor.', {
-    parentFolderId: z.string().uuid().optional().describe('Folder ID to list inside. Omit for root.'),
-    teamId: z.string().optional().describe("Team ID to list inside that team's drive."),
+server.tool('list_files', 'List files and folders. Omit parentFolderId for the root. For a team folder, parentFolderId is enough — teamId is inherited. Pass teamId only to list a team space root. Supports cursor-based pagination via the returned nextCursor.', {
+    parentFolderId: z.string().uuid().optional().describe('Folder ID to list inside. Omit for root. Team folders do not need teamId.'),
+    teamId: z.string().optional().describe("Team space root only. Not required when listing inside a team folder."),
     limit: z.number().int().min(1).max(500).default(100),
     cursor: z.string().optional().describe('Pagination cursor from a previous response.'),
     trashed: z.boolean().default(false).describe('If true, lists trashed items (parent filter ignored).'),
@@ -143,7 +143,7 @@ server.tool('get_folder', 'Get metadata for a folder.', { id: z.string().uuid() 
         return errorResult(err);
     }
 });
-server.tool('list_folder_children', 'List the immediate children (files + subfolders) of a folder.', {
+server.tool('list_folder_children', 'List the immediate children (files + subfolders) of a folder. Works for team Drive folders without passing teamId — the folder’s space is used.', {
     id: z.string().uuid(),
     limit: z.number().int().min(1).max(500).default(100),
     cursor: z.string().optional(),

@@ -45,7 +45,7 @@ ACHI_API_TOKEN=achi_pat_xxx npx -y github:EBIElimited/drive-mcp
 | `list_files` | List files + folders (paginated, supports `parentFolderId`, `teamId`, `trashed`) |
 | `get_file` | File metadata |
 | `get_folder` | Folder metadata |
-| `list_folder_children` | List a folder's contents |
+| `list_folder_children` | List a folder's contents (inherits team space) |
 | `search` | Find files/folders by name (substring, case-insensitive) |
 | `read_file` | Download file content (text inline, images as MCP image, other as resource) |
 | `read_file_text` | Convenience: read a file decoded as UTF-8 |
