@@ -57,7 +57,10 @@ ACHI_API_TOKEN=achi_pat_xxx npx -y github:EBIElimited/drive-mcp
 | `create_folder` | Make a new folder |
 | `update_folder` | Rename / move / star / trash / restore |
 | `delete_folder` | Recursive trash (default) or permanent delete |
-| `list_units` | Properties apartments (`teamId` / `scope=all` / `financing=debt_free`) |
+| `list_units` | Properties apartments (`teamId` / `scope=all` / `buildingId` / `kind=etw\|building` / `financing=debt_free`). `summary.remainingDebtEuros` counts each MFH loan once. |
+| `list_buildings` / `get_building` | MFH objects (one loan, units, garage spaces) |
+| `create_building` / `update_building` | Create/patch an MFH. Never invent remaining debt. |
+| `create_building_space` | Garage/Stellplatz; `occupancyUnitId` = with-rented |
 | `get_unit` | One apartment (includes loanStatus, Grundschuld) |
 | `update_unit` | Write sqm, rooms, rent, tenant, loanStatus… Snapshots first. Never invent remaining debt. |
 | `get_unit_financing` | Suggestions from trail titles, loans, events |

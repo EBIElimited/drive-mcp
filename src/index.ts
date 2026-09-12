@@ -458,10 +458,12 @@ server.tool(
 
 server.tool(
   'list_units',
-  'List Properties (Vermietung) apartments the user can see. Pass teamId for a space such as Chi Ross. scope=all lists every space. financing filters by loanStatus.',
+  'List Properties apartments. Pass teamId for a space such as Chi Ross. scope=all lists every space. buildingId / kind=etw|building for MFH vs ETW. financing filters by loanStatus. summary.remainingDebtEuros counts each building loan once — never SUM remainingDebt across units of the same building.',
   {
     teamId: z.string().optional(),
     scope: z.enum(['all']).optional(),
+    buildingId: z.string().uuid().optional(),
+    kind: z.enum(['etw', 'building']).optional(),
     financing: z
       .enum(['debt_free', 'active', 'unknown', 'fixed_rate_soon', 'all'])
       .optional()
@@ -470,6 +472,123 @@ server.tool(
   async (args) => {
     try {
       return jsonText(await client.listUnits(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'list_buildings',
+  'List MFH buildings (one purchase + one loan + Wohnungen + garage spaces). Pass teamId for Chi Ross. Do not SUM remainingDebt across the nested units.',
+  {
+    teamId: z.string().optional(),
+    scope: z.enum(['all']).optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.listBuildings(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'get_building',
+  'One MFH with units, garage spaces, and sums (Kalt, Warm, Rate, Überschuss, Leerstand). House loan is building.loan — not on each Wohnung.',
+  { id: z.string().uuid() },
+  async ({ id }) => {
+    try {
+      return jsonText(await client.getBuilding(id))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'create_building',
+  'Create an MFH. name required. Optional address, city, teamId, purchasePriceEuros, nested loan (bank, remainingDebtEuros, monthlyPaymentEuros, loanStatus), unitIds[], spaces[{kind,label,occupancyUnitId}]. Never invent remaining debt.',
+  {
+    name: z.string().min(1).max(200),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    teamId: z.string().optional(),
+    purchasePriceEuros: z.number().optional(),
+    loan: z
+      .object({
+        bank: z.string().optional(),
+        account: z.string().optional(),
+        remainingDebtEuros: z.number().optional(),
+        monthlyPaymentEuros: z.number().optional(),
+        fixedRateEnd: z.string().optional(),
+        ratePercent: z.string().optional(),
+        loanStatus: z.enum(['debt_free', 'active', 'in_prolongation', 'unknown']).optional(),
+        notes: z.string().optional(),
+      })
+      .optional(),
+    unitIds: z.array(z.string().uuid()).optional(),
+    spaces: z
+      .array(
+        z.object({
+          kind: z.enum(['garage', 'parking']).optional(),
+          label: z.string(),
+          occupancyUnitId: z.string().uuid().optional(),
+          notes: z.string().optional(),
+          rentEuros: z.number().optional(),
+        }),
+      )
+      .optional(),
+  },
+  async (body) => {
+    try {
+      return jsonText(await client.createBuilding(body))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'update_building',
+  'Patch an MFH including the single house loan. Never invent remaining debt.',
+  {
+    id: z.string().uuid(),
+    name: z.string().min(1).max(200).optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    purchasePriceEuros: z.number().nullable().optional(),
+    remainingDebtEuros: z.number().nullable().optional(),
+    monthlyPaymentEuros: z.number().nullable().optional(),
+    bankName: z.string().optional(),
+    loanStatus: z.enum(['debt_free', 'active', 'in_prolongation', 'unknown']).optional(),
+    loanNotes: z.string().optional(),
+    nonRecoverableCostsEuros: z.number().nullable().optional(),
+  },
+  async ({ id, ...patch }) => {
+    try {
+      return jsonText(await client.updateBuilding(id, patch))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'create_building_space',
+  'Add a garage or Stellplatz on an MFH. occupancyUnitId = with-rented to a Wohnung (Cretu 3+4).',
+  {
+    buildingId: z.string().uuid(),
+    label: z.string().min(1),
+    kind: z.enum(['garage', 'parking']).optional(),
+    occupancyUnitId: z.string().uuid().optional(),
+    notes: z.string().optional(),
+    rentEuros: z.number().optional(),
+  },
+  async ({ buildingId, ...body }) => {
+    try {
+      return jsonText(await client.createBuildingSpace(buildingId, body))
     } catch (err) {
       return errorResult(err)
     }

@@ -362,12 +362,73 @@ export class AchiClient {
 
   // ── Properties / Mail / Agent / letters ────────────────────────────────
 
-  async listUnits(opts: { teamId?: string; scope?: 'all'; financing?: string } = {}) {
-    return this.json<{ scope: string; teamId: string | null; financing?: string; units: unknown[] }>(
+  async listUnits(opts: { teamId?: string; scope?: 'all'; financing?: string; buildingId?: string; kind?: string } = {}) {
+    return this.json<{
+      scope: string
+      teamId: string | null
+      financing?: string
+      kind?: string
+      buildingId?: string | null
+      units: unknown[]
+      summary?: unknown
+    }>(
       '/v1/properties/units',
       {},
       opts,
     )
+  }
+
+  async listBuildings(opts: { teamId?: string; scope?: 'all' } = {}) {
+    return this.json<{ scope: string; teamId: string | null; buildings: unknown[] }>(
+      '/v1/properties/buildings',
+      {},
+      opts,
+    )
+  }
+
+  async getBuilding(id: string) {
+    return this.json<{ building: unknown }>(`/v1/properties/buildings/${encodeURIComponent(id)}`)
+  }
+
+  async createBuilding(body: Record<string, unknown>) {
+    return this.json<{ building: unknown }>('/v1/properties/buildings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  async updateBuilding(id: string, body: Record<string, unknown>) {
+    return this.json<{ building: unknown }>(`/v1/properties/buildings/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  async createBuildingSpace(buildingId: string, body: Record<string, unknown>) {
+    return this.json<{ space: unknown }>(
+      `/v1/properties/buildings/${encodeURIComponent(buildingId)}/spaces`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    )
+  }
+
+  async updateBuildingSpace(spaceId: string, body: Record<string, unknown>) {
+    return this.json<{ space: unknown }>(`/v1/properties/spaces/${encodeURIComponent(spaceId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  async deleteBuildingSpace(spaceId: string) {
+    return this.json<{ ok: boolean; id: string }>(`/v1/properties/spaces/${encodeURIComponent(spaceId)}`, {
+      method: 'DELETE',
+    })
   }
 
   async getUnit(id: string) {

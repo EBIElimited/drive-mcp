@@ -233,6 +233,45 @@ export class AchiClient {
     async listUnits(opts = {}) {
         return this.json('/v1/properties/units', {}, opts);
     }
+    async listBuildings(opts = {}) {
+        return this.json('/v1/properties/buildings', {}, opts);
+    }
+    async getBuilding(id) {
+        return this.json(`/v1/properties/buildings/${encodeURIComponent(id)}`);
+    }
+    async createBuilding(body) {
+        return this.json('/v1/properties/buildings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
+    async updateBuilding(id, body) {
+        return this.json(`/v1/properties/buildings/${encodeURIComponent(id)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
+    async createBuildingSpace(buildingId, body) {
+        return this.json(`/v1/properties/buildings/${encodeURIComponent(buildingId)}/spaces`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
+    async updateBuildingSpace(spaceId, body) {
+        return this.json(`/v1/properties/spaces/${encodeURIComponent(spaceId)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
+    async deleteBuildingSpace(spaceId) {
+        return this.json(`/v1/properties/spaces/${encodeURIComponent(spaceId)}`, {
+            method: 'DELETE',
+        });
+    }
     async getUnit(id) {
         return this.json(`/v1/properties/units/${encodeURIComponent(id)}`);
     }
@@ -384,5 +423,48 @@ export class AchiClient {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         });
+    }
+    async listCrmBoards(opts = {}) {
+        return this.json('/v1/crm/boards', {}, opts);
+    }
+    async createCrmBoard(body) {
+        return this.json('/v1/crm/boards', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
+    async listCrmRecords(opts) {
+        return this.json('/v1/crm/records', {}, opts);
+    }
+    async createCrmRecord(body) {
+        return this.json('/v1/crm/records', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
+    async updateCrmRecord(id, body) {
+        return this.json(`/v1/crm/records/${encodeURIComponent(id)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
+    async refreshCrmXProfile(id) {
+        return this.json(`/v1/crm/records/${encodeURIComponent(id)}/refresh-x`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}',
+        });
+    }
+    async getCrmStats(boardId) {
+        return this.json('/v1/crm/stats', {}, { boardId });
+    }
+    async listCrmRecordVersions(id) {
+        return this.json(`/v1/crm/records/${encodeURIComponent(id)}/versions`);
+    }
+    async restoreCrmRecord(id, versionId) {
+        return this.json(`/v1/crm/records/${encodeURIComponent(id)}/versions/${encodeURIComponent(versionId)}/restore`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     }
 }

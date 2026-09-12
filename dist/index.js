@@ -345,9 +345,11 @@ server.tool('delete_folder', 'Move a folder to trash (recursive — all descenda
     }
 });
 // ── Properties / Mail / Agent / letters ─────────────────────────────────────
-server.tool('list_units', 'List Properties (Vermietung) apartments the user can see. Pass teamId for a space such as Chi Ross. scope=all lists every space. financing filters by loanStatus.', {
+server.tool('list_units', 'List Properties apartments. Pass teamId for a space such as Chi Ross. scope=all lists every space. buildingId / kind=etw|building for MFH vs ETW. financing filters by loanStatus. summary.remainingDebtEuros counts each building loan once — never SUM remainingDebt across units of the same building.', {
     teamId: z.string().optional(),
     scope: z.enum(['all']).optional(),
+    buildingId: z.string().uuid().optional(),
+    kind: z.enum(['etw', 'building']).optional(),
     financing: z
         .enum(['debt_free', 'active', 'unknown', 'fixed_rate_soon', 'all'])
         .optional()
@@ -355,6 +357,96 @@ server.tool('list_units', 'List Properties (Vermietung) apartments the user can 
 }, async (args) => {
     try {
         return jsonText(await client.listUnits(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('list_buildings', 'List MFH buildings (one purchase + one loan + Wohnungen + garage spaces). Pass teamId for Chi Ross. Do not SUM remainingDebt across the nested units.', {
+    teamId: z.string().optional(),
+    scope: z.enum(['all']).optional(),
+}, async (args) => {
+    try {
+        return jsonText(await client.listBuildings(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('get_building', 'One MFH with units, garage spaces, and sums (Kalt, Warm, Rate, Überschuss, Leerstand). House loan is building.loan — not on each Wohnung.', { id: z.string().uuid() }, async ({ id }) => {
+    try {
+        return jsonText(await client.getBuilding(id));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('create_building', 'Create an MFH. name required. Optional address, city, teamId, purchasePriceEuros, nested loan (bank, remainingDebtEuros, monthlyPaymentEuros, loanStatus), unitIds[], spaces[{kind,label,occupancyUnitId}]. Never invent remaining debt.', {
+    name: z.string().min(1).max(200),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    teamId: z.string().optional(),
+    purchasePriceEuros: z.number().optional(),
+    loan: z
+        .object({
+        bank: z.string().optional(),
+        account: z.string().optional(),
+        remainingDebtEuros: z.number().optional(),
+        monthlyPaymentEuros: z.number().optional(),
+        fixedRateEnd: z.string().optional(),
+        ratePercent: z.string().optional(),
+        loanStatus: z.enum(['debt_free', 'active', 'in_prolongation', 'unknown']).optional(),
+        notes: z.string().optional(),
+    })
+        .optional(),
+    unitIds: z.array(z.string().uuid()).optional(),
+    spaces: z
+        .array(z.object({
+        kind: z.enum(['garage', 'parking']).optional(),
+        label: z.string(),
+        occupancyUnitId: z.string().uuid().optional(),
+        notes: z.string().optional(),
+        rentEuros: z.number().optional(),
+    }))
+        .optional(),
+}, async (body) => {
+    try {
+        return jsonText(await client.createBuilding(body));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('update_building', 'Patch an MFH including the single house loan. Never invent remaining debt.', {
+    id: z.string().uuid(),
+    name: z.string().min(1).max(200).optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    purchasePriceEuros: z.number().nullable().optional(),
+    remainingDebtEuros: z.number().nullable().optional(),
+    monthlyPaymentEuros: z.number().nullable().optional(),
+    bankName: z.string().optional(),
+    loanStatus: z.enum(['debt_free', 'active', 'in_prolongation', 'unknown']).optional(),
+    loanNotes: z.string().optional(),
+    nonRecoverableCostsEuros: z.number().nullable().optional(),
+}, async ({ id, ...patch }) => {
+    try {
+        return jsonText(await client.updateBuilding(id, patch));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('create_building_space', 'Add a garage or Stellplatz on an MFH. occupancyUnitId = with-rented to a Wohnung (Cretu 3+4).', {
+    buildingId: z.string().uuid(),
+    label: z.string().min(1),
+    kind: z.enum(['garage', 'parking']).optional(),
+    occupancyUnitId: z.string().uuid().optional(),
+    notes: z.string().optional(),
+    rentEuros: z.number().optional(),
+}, async ({ buildingId, ...body }) => {
+    try {
+        return jsonText(await client.createBuildingSpace(buildingId, body));
     }
     catch (err) {
         return errorResult(err);
@@ -812,6 +904,111 @@ server.tool('update_property_visit', 'Update a viewing trip (status, distanceKm,
 }, async ({ id, ...body }) => {
     try {
         return jsonText(await client.updatePropertyVisit(id, body));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('list_crm_boards', 'List CRM boards in a space. Omit teamId for personal.', { teamId: z.string().optional() }, async (args) => {
+    try {
+        return jsonText(await client.listCrmBoards(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('create_crm_board', 'Create a CRM board. Default template is generic contacts (name, company, role, followers if social).', {
+    title: z.string(),
+    teamId: z.string().optional(),
+    template: z.enum(['outreach', 'blank']).optional(),
+}, async (args) => {
+    try {
+        return jsonText(await client.createCrmBoard(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('list_crm_records', 'List CRM records on a board.', { boardId: z.string().uuid(), q: z.string().optional() }, async (args) => {
+    try {
+        return jsonText(await client.listCrmRecords(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('create_crm_record', 'Create a CRM contact. Use role for the job (voice actor, Hausverwaltung, banker, artist). Do not invent followers, country, email, or phone.', {
+    boardId: z.string().uuid(),
+    name: z.string(),
+    handle: z.string().optional(),
+    company: z.string().optional(),
+    role: z.string().optional(),
+    email: z.string().optional(),
+    phone: z.string().optional(),
+    platform: z.string().optional(),
+    profileUrl: z.string().optional(),
+    followers: z.union([z.number(), z.string()]).optional(),
+    stage: z.string().optional(),
+    fields: z.record(z.unknown()).optional(),
+    versionReason: z.string().optional(),
+}, async (args) => {
+    try {
+        return jsonText(await client.createCrmRecord(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('update_crm_record', 'Patch a CRM record. Snapshots a version first. Pass versionReason.', {
+    id: z.string().uuid(),
+    name: z.string().optional(),
+    handle: z.string().optional(),
+    company: z.string().optional(),
+    role: z.string().optional(),
+    email: z.string().optional(),
+    phone: z.string().optional(),
+    platform: z.string().optional(),
+    profileUrl: z.string().optional(),
+    followers: z.union([z.number(), z.string()]).optional(),
+    stage: z.string().optional(),
+    fields: z.record(z.unknown()).optional(),
+    archived: z.boolean().optional(),
+    versionReason: z.string().optional(),
+}, async ({ id, ...body }) => {
+    try {
+        return jsonText(await client.updateCrmRecord(id, body));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('get_crm_stats', 'CRM stats for a board: records, followers, by role / country / stage.', { boardId: z.string().uuid() }, async ({ boardId }) => {
+    try {
+        return jsonText(await client.getCrmStats(boardId));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('refresh_crm_x_profile', 'Read the public X profile for a CRM contact. Updates followers and fills country when the profile states one. Does not invent country.', { id: z.string().uuid() }, async ({ id }) => {
+    try {
+        return jsonText(await client.refreshCrmXProfile(id));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('list_crm_record_versions', 'Version history for a CRM record (newest first).', { id: z.string().uuid() }, async ({ id }) => {
+    try {
+        return jsonText(await client.listCrmRecordVersions(id));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('restore_crm_record', 'Restore a CRM record to a prior version snapshot.', { id: z.string().uuid(), versionId: z.string().uuid() }, async ({ id, versionId }) => {
+    try {
+        return jsonText(await client.restoreCrmRecord(id, versionId));
     }
     catch (err) {
         return errorResult(err);
