@@ -643,6 +643,14 @@ export class AchiClient {
     })
   }
 
+  async refreshCrmXProfile(id: string) {
+    return this.json(`/v1/crm/records/${encodeURIComponent(id)}/refresh-x`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    })
+  }
+
   async getCrmStats(boardId: string) {
     return this.json('/v1/crm/stats', {}, { boardId })
   }

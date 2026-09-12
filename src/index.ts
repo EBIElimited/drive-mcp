@@ -1105,7 +1105,7 @@ server.tool(
 
 server.tool(
   'create_crm_board',
-  'Create a CRM board. template=outreach matches the VA tracker (AI policy, rates, contacted).',
+  'Create a CRM board. template=outreach is followers, country, rates, contacted, notes.',
   {
     title: z.string(),
     teamId: z.string().optional(),
@@ -1135,7 +1135,7 @@ server.tool(
 
 server.tool(
   'create_crm_record',
-  'Create a CRM contact. Do not invent followers, rates, or AI policy.',
+  'Create a CRM contact. Do not invent followers, country, or rates. If they are against AI, put that in notes.',
   {
     boardId: z.string().uuid(),
     name: z.string(),
@@ -1182,11 +1182,24 @@ server.tool(
 
 server.tool(
   'get_crm_stats',
-  'CRM stats for a board: followers total, AI yes/no/unknown, contacted, awaiting reply.',
+  'CRM stats for a board: followers total, country, contacted, awaiting reply.',
   { boardId: z.string().uuid() },
   async ({ boardId }) => {
     try {
       return jsonText(await client.getCrmStats(boardId))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'refresh_crm_x_profile',
+  'Read the public X profile for a CRM contact. Updates followers and fills country when the profile states one. Does not invent country.',
+  { id: z.string().uuid() },
+  async ({ id }) => {
+    try {
+      return jsonText(await client.refreshCrmXProfile(id))
     } catch (err) {
       return errorResult(err)
     }
