@@ -1090,6 +1090,135 @@ server.tool(
   },
 )
 
+server.tool(
+  'list_crm_boards',
+  'List CRM boards in a space. Omit teamId for personal.',
+  { teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.listCrmBoards(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'create_crm_board',
+  'Create a CRM board. template=outreach matches the VA tracker (AI policy, rates, contacted).',
+  {
+    title: z.string(),
+    teamId: z.string().optional(),
+    template: z.enum(['outreach', 'blank']).optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.createCrmBoard(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'list_crm_records',
+  'List CRM records on a board.',
+  { boardId: z.string().uuid(), q: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.listCrmRecords(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'create_crm_record',
+  'Create a CRM contact. Do not invent followers, rates, or AI policy.',
+  {
+    boardId: z.string().uuid(),
+    name: z.string(),
+    handle: z.string().optional(),
+    platform: z.string().optional(),
+    profileUrl: z.string().optional(),
+    followers: z.union([z.number(), z.string()]).optional(),
+    stage: z.string().optional(),
+    fields: z.record(z.unknown()).optional(),
+    versionReason: z.string().optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.createCrmRecord(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'update_crm_record',
+  'Patch a CRM record. Snapshots a version first. Pass versionReason.',
+  {
+    id: z.string().uuid(),
+    name: z.string().optional(),
+    handle: z.string().optional(),
+    platform: z.string().optional(),
+    profileUrl: z.string().optional(),
+    followers: z.union([z.number(), z.string()]).optional(),
+    stage: z.string().optional(),
+    fields: z.record(z.unknown()).optional(),
+    archived: z.boolean().optional(),
+    versionReason: z.string().optional(),
+  },
+  async ({ id, ...body }) => {
+    try {
+      return jsonText(await client.updateCrmRecord(id, body))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'get_crm_stats',
+  'CRM stats for a board: followers total, AI yes/no/unknown, contacted, awaiting reply.',
+  { boardId: z.string().uuid() },
+  async ({ boardId }) => {
+    try {
+      return jsonText(await client.getCrmStats(boardId))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'list_crm_record_versions',
+  'Version history for a CRM record (newest first).',
+  { id: z.string().uuid() },
+  async ({ id }) => {
+    try {
+      return jsonText(await client.listCrmRecordVersions(id))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'restore_crm_record',
+  'Restore a CRM record to a prior version snapshot.',
+  { id: z.string().uuid(), versionId: z.string().uuid() },
+  async ({ id, versionId }) => {
+    try {
+      return jsonText(await client.restoreCrmRecord(id, versionId))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
 // ── Start ───────────────────────────────────────────────────────────────────
 
 async function main() {

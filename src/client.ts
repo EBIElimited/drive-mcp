@@ -610,4 +610,51 @@ export class AchiClient {
       },
     )
   }
+
+  async listCrmBoards(opts: { teamId?: string } = {}) {
+    return this.json('/v1/crm/boards', {}, opts)
+  }
+
+  async createCrmBoard(body: Record<string, unknown>) {
+    return this.json('/v1/crm/boards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  async listCrmRecords(opts: { boardId: string; q?: string }) {
+    return this.json('/v1/crm/records', {}, opts)
+  }
+
+  async createCrmRecord(body: Record<string, unknown>) {
+    return this.json('/v1/crm/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  async updateCrmRecord(id: string, body: Record<string, unknown>) {
+    return this.json(`/v1/crm/records/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  async getCrmStats(boardId: string) {
+    return this.json('/v1/crm/stats', {}, { boardId })
+  }
+
+  async listCrmRecordVersions(id: string) {
+    return this.json(`/v1/crm/records/${encodeURIComponent(id)}/versions`)
+  }
+
+  async restoreCrmRecord(id: string, versionId: string) {
+    return this.json(
+      `/v1/crm/records/${encodeURIComponent(id)}/versions/${encodeURIComponent(versionId)}/restore`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },
+    )
+  }
 }

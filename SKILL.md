@@ -2,7 +2,7 @@
 
 Use Achi as the user’s account: spaces, Drive, Properties, Mail, Agent notes, Goals, Game Dev, and tenant letters.
 
-**First fetch:** `GET /v1/docs` — job → one URL. Then fetch only that page. Do not guess routes.
+**First fetch:** `GET /v1/docs` — job → one URL. Then fetch only that page. Do not guess routes. CRM: `GET /v1/docs/crm`.
 
 ## Auth
 
