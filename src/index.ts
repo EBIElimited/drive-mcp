@@ -1105,7 +1105,7 @@ server.tool(
 
 server.tool(
   'create_crm_board',
-  'Create a CRM board. template=outreach is followers, country, rates, contacted, notes.',
+  'Create a CRM board. Default template is generic contacts (name, company, role, followers if social).',
   {
     title: z.string(),
     teamId: z.string().optional(),
@@ -1135,11 +1135,15 @@ server.tool(
 
 server.tool(
   'create_crm_record',
-  'Create a CRM contact. Do not invent followers, country, or rates. If they are against AI, put that in notes.',
+  'Create a CRM contact. Use role for the job (voice actor, Hausverwaltung, banker, artist). Do not invent followers, country, email, or phone.',
   {
     boardId: z.string().uuid(),
     name: z.string(),
     handle: z.string().optional(),
+    company: z.string().optional(),
+    role: z.string().optional(),
+    email: z.string().optional(),
+    phone: z.string().optional(),
     platform: z.string().optional(),
     profileUrl: z.string().optional(),
     followers: z.union([z.number(), z.string()]).optional(),
@@ -1163,6 +1167,10 @@ server.tool(
     id: z.string().uuid(),
     name: z.string().optional(),
     handle: z.string().optional(),
+    company: z.string().optional(),
+    role: z.string().optional(),
+    email: z.string().optional(),
+    phone: z.string().optional(),
     platform: z.string().optional(),
     profileUrl: z.string().optional(),
     followers: z.union([z.number(), z.string()]).optional(),
@@ -1182,7 +1190,7 @@ server.tool(
 
 server.tool(
   'get_crm_stats',
-  'CRM stats for a board: followers total, country, contacted, awaiting reply.',
+  'CRM stats for a board: records, followers, by role / country / stage.',
   { boardId: z.string().uuid() },
   async ({ boardId }) => {
     try {
