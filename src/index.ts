@@ -1161,7 +1161,7 @@ server.tool(
 
 server.tool(
   'create_property_visit',
-  'Log a viewing trip. Pass the driven kilometres — do not invent distance. Default deductible is 0.30 €/km on completed trips.',
+  'Log a viewing trip. distanceKm is one-way. roundTrip defaults true (Hin- und Rückfahrt, deductible ×2). Never invent kilometres. Default rate 0.30 €/km.',
   {
     teamId: z.string().optional(),
     visitedOn: z.string().optional().describe('YYYY-MM-DD'),
@@ -1169,7 +1169,8 @@ server.tool(
     address: z.string().optional(),
     city: z.string().optional(),
     startAddress: z.string().optional(),
-    distanceKm: z.number().nullable().optional().describe('Round-trip kilometres as driven. Do not invent.'),
+    distanceKm: z.number().nullable().optional().describe('One-way kilometres. Do not invent.'),
+    roundTrip: z.boolean().optional().describe('Default true: count there and back.'),
     kmRateEuros: z.number().optional().describe('Default 0.30'),
     purpose: z.enum(['viewing', 'follow_up', 'handover', 'other']).optional(),
     status: z.enum(['planned', 'done', 'cancelled']).optional(),
@@ -1186,7 +1187,7 @@ server.tool(
 
 server.tool(
   'update_property_visit',
-  'Update a viewing trip (status, distanceKm, notes). Never invent kilometres.',
+  'Update a viewing trip (status, distanceKm, roundTrip, notes). Never invent kilometres.',
   {
     id: z.string().uuid(),
     visitedOn: z.string().optional(),
@@ -1194,7 +1195,8 @@ server.tool(
     address: z.string().optional(),
     city: z.string().optional(),
     startAddress: z.string().optional(),
-    distanceKm: z.number().nullable().optional(),
+    distanceKm: z.number().nullable().optional().describe('One-way kilometres.'),
+    roundTrip: z.boolean().optional(),
     kmRateEuros: z.number().optional(),
     purpose: z.enum(['viewing', 'follow_up', 'handover', 'other']).optional(),
     status: z.enum(['planned', 'done', 'cancelled']).optional(),
