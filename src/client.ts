@@ -521,6 +521,10 @@ export class AchiClient {
       periodFrom?: string
       periodTo?: string
       year?: number
+      effectiveOn?: string
+      rentEurosAfter?: number | null
+      isCurrentLease?: boolean
+      supersedesDocumentId?: string | null
     },
   ) {
     return this.json<{ document: unknown }>(
@@ -536,7 +540,17 @@ export class AchiClient {
   async updateUnitDocument(
     unitId: string,
     docId: string,
-    body: { title?: string; documentDate?: string; date?: string; notes?: string | null },
+    body: {
+      title?: string
+      documentDate?: string
+      date?: string
+      notes?: string | null
+      category?: string
+      effectiveOn?: string | null
+      rentEurosAfter?: number | null
+      isCurrentLease?: boolean
+      supersedesDocumentId?: string | null
+    },
   ) {
     return this.json<{ document: unknown }>(
       `/v1/properties/units/${encodeURIComponent(unitId)}/documents/${encodeURIComponent(docId)}`,
@@ -546,6 +560,31 @@ export class AchiClient {
         body: JSON.stringify(body),
       },
     )
+  }
+
+  async createProofOfRevenue(body: {
+    teamId?: string
+    buildingId?: string | null
+    unitIds?: string[] | null
+    asOf?: string
+    writtenOnly?: boolean
+    includeVacant?: boolean
+    dryRun?: boolean
+    password?: string
+  }) {
+    return this.json<{
+      packId: string | null
+      pdfUrl: string | null
+      zipUrl: string | null
+      expiresAt: string | null
+      summary: unknown
+      rows: unknown[]
+      dryRun: boolean
+    }>('/v1/properties/proof-of-revenue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
   }
 
   async downloadUnitDocument(unitId: string, docId: string): Promise<ContentBytes> {

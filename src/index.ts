@@ -814,7 +814,7 @@ server.tool(
   {
     unitId: z.string().uuid(),
     title: z.string().optional(),
-    category: z.string().optional().describe('lease | deposit | hausgeld | nebenkosten | deed | repair | energy | insurance | tax | correspondence | other'),
+    category: z.string().optional().describe('lease | rent_increase | addendum | deposit | hausgeld | nebenkosten | deed | repair | energy | insurance | tax | correspondence | other'),
     documentDate: z.string().optional().describe('YYYY-MM-DD or DD.MM.YYYY — the letter/receipt date, not 31 Dec of the settlement year'),
     notes: z.string().optional(),
     fileName: z.string().optional(),
@@ -825,6 +825,10 @@ server.tool(
     periodFrom: z.string().optional(),
     periodTo: z.string().optional(),
     year: z.number().int().optional(),
+    effectiveOn: z.string().optional().describe('When the rent in this document starts (YYYY-MM-DD)'),
+    rentEurosAfter: z.number().optional().describe('Nettokalt after this document. Required for Proof of Revenue.'),
+    isCurrentLease: z.boolean().optional(),
+    supersedesDocumentId: z.string().uuid().optional(),
   },
   async (args) => {
     try {
@@ -842,6 +846,10 @@ server.tool(
           periodFrom: args.periodFrom,
           periodTo: args.periodTo,
           year: args.year,
+          effectiveOn: args.effectiveOn,
+          rentEurosAfter: args.rentEurosAfter,
+          isCurrentLease: args.isCurrentLease,
+          supersedesDocumentId: args.supersedesDocumentId,
         }),
       )
     } catch (err) {
@@ -852,13 +860,18 @@ server.tool(
 
 server.tool(
   'update_unit_document',
-  'Patch a trail document’s title, documentDate (YYYY-MM-DD or DD.MM.YYYY), or notes. Use this for a wrong letter date — do not ask the user to edit the UI.',
+  'Patch a trail document’s title, documentDate, category, effectiveOn, rentEurosAfter, isCurrentLease, or notes. Use this to tag a lease/increase for Proof of Revenue — do not ask the user to edit the UI.',
   {
     unitId: z.string().uuid(),
     docId: z.string().uuid(),
     title: z.string().optional(),
     documentDate: z.string().optional().describe('YYYY-MM-DD or DD.MM.YYYY — the letter/receipt date, not 31 Dec of the settlement year'),
     notes: z.string().nullable().optional(),
+    category: z.string().optional(),
+    effectiveOn: z.string().optional(),
+    rentEurosAfter: z.number().nullable().optional(),
+    isCurrentLease: z.boolean().optional(),
+    supersedesDocumentId: z.string().uuid().nullable().optional(),
   },
   async (args) => {
     try {
@@ -867,8 +880,35 @@ server.tool(
           title: args.title,
           documentDate: args.documentDate,
           notes: args.notes,
+          category: args.category,
+          effectiveOn: args.effectiveOn,
+          rentEurosAfter: args.rentEurosAfter,
+          isCurrentLease: args.isCurrentLease,
+          supersedesDocumentId: args.supersedesDocumentId,
         }),
       )
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'create_proof_of_revenue',
+  'Build Mietaufstellung.pdf + Vertragstrail.zip from the written trail. Ist-Kalt is rentEurosAfter on lease/increase/addendum as of asOf — never invent rent. Default scope is occupied ETW; pass buildingId for one MFH. dryRun=true to preview. No bank mail. Share links expire in 14 days.',
+  {
+    teamId: z.string().uuid().optional(),
+    buildingId: z.string().uuid().optional(),
+    unitIds: z.array(z.string().uuid()).optional(),
+    asOf: z.string().optional().describe('YYYY-MM-DD. Default today. Hadamar 456 € only on/after 2026-12-01 if tagged.'),
+    writtenOnly: z.boolean().optional().describe('Default true — skip units without rentEurosAfter'),
+    includeVacant: z.boolean().optional(),
+    dryRun: z.boolean().optional(),
+    password: z.string().optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.createProofOfRevenue(args))
     } catch (err) {
       return errorResult(err)
     }
