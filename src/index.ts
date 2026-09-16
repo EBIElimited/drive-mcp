@@ -576,6 +576,60 @@ server.tool(
 )
 
 server.tool(
+  'list_building_documents',
+  'List MFH building trail files (Kaufvertrag, Nutzungsänderung, Exposé). Not unit leases.',
+  { buildingId: z.string().uuid() },
+  async ({ buildingId }) => {
+    try {
+      return jsonText(await client.listBuildingDocuments(buildingId))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'create_building_document',
+  'Add a building-level trail file (Kaufvertrag, Nutzungsänderung, Exposé). Do not hang these on a Wohnung. JSON contentBase64 or fileName+mimeType.',
+  {
+    buildingId: z.string().uuid(),
+    title: z.string().optional(),
+    category: z.string().optional().describe('deed | energy | other | …'),
+    documentDate: z.string().optional(),
+    notes: z.string().optional(),
+    fileName: z.string().optional(),
+    mimeType: z.string().optional(),
+    contentBase64: z.string().optional(),
+  },
+  async ({ buildingId, ...body }) => {
+    try {
+      return jsonText(await client.createBuildingDocument(buildingId, body))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'download_building_document',
+  'Download a building trail file (bytes).',
+  { buildingId: z.string().uuid(), docId: z.string().uuid() },
+  async ({ buildingId, docId }) => {
+    try {
+      const content = await client.downloadBuildingDocument(buildingId, docId)
+      return {
+        content: [
+          { type: 'text' as const, text: `Downloaded ${content.size} bytes (${content.mimeType})` },
+          ...contentBytesToMcp(content, 'document', docId),
+        ],
+      }
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
   'create_building_space',
   'Add a garage or Stellplatz on an MFH. occupancyUnitId = with-rented to a Wohnung (Cretu 3+4).',
   {

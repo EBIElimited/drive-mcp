@@ -417,6 +417,47 @@ export class AchiClient {
     )
   }
 
+  async listBuildingDocuments(buildingId: string) {
+    return this.json<{ buildingId: string; documents: unknown[] }>(
+      `/v1/properties/buildings/${encodeURIComponent(buildingId)}/documents`,
+    )
+  }
+
+  async createBuildingDocument(
+    buildingId: string,
+    body: {
+      title?: string
+      category?: string
+      documentDate?: string
+      notes?: string | null
+      fileName?: string
+      mimeType?: string
+      contentBase64?: string
+    },
+  ) {
+    return this.json<{ document: unknown }>(
+      `/v1/properties/buildings/${encodeURIComponent(buildingId)}/documents`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    )
+  }
+
+  async downloadBuildingDocument(buildingId: string, docId: string): Promise<ContentBytes> {
+    const resp = await this.request(
+      `/v1/properties/buildings/${encodeURIComponent(buildingId)}/documents/${encodeURIComponent(docId)}/download`,
+    )
+    const buf = new Uint8Array(await resp.arrayBuffer())
+    return {
+      mimeType: resp.headers.get('content-type')?.split(';')[0]?.trim() || 'application/octet-stream',
+      bytes: buf,
+      size: buf.length,
+      partial: false,
+    }
+  }
+
   async updateBuildingSpace(spaceId: string, body: Record<string, unknown>) {
     return this.json<{ space: unknown }>(`/v1/properties/spaces/${encodeURIComponent(spaceId)}`, {
       method: 'PATCH',

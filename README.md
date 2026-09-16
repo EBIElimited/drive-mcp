@@ -61,6 +61,9 @@ ACHI_API_TOKEN=achi_pat_xxx npx -y github:EBIElimited/drive-mcp
 | `list_buildings` / `get_building` | MFH objects (one loan, units, garage spaces) |
 | `create_building` / `update_building` | Create/patch an MFH. Never invent remaining debt. |
 | `create_building_space` | Garage/Stellplatz; `occupancyUnitId` = with-rented |
+| `list_building_documents` | MFH trail (Kaufvertrag, Nutzungsänderung, Exposé) |
+| `create_building_document` | Add a house file. Not a Wohnung lease |
+| `download_building_document` | Download a building trail file |
 | `get_unit` | One apartment (includes loanStatus, Grundschuld) |
 | `update_unit` | Write sqm, rooms, rent, tenant, loanStatus… Snapshots first. Never invent remaining debt. |
 | `get_unit_financing` | Suggestions from trail titles, loans, events |
