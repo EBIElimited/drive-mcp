@@ -965,6 +965,10 @@ server.tool(
       .boolean()
       .optional()
       .describe('Default true. False omits tenant names (privacy for financing advisors).'),
+    includeMarket: z
+      .boolean()
+      .optional()
+      .describe('Extra table: market value, remaining debt, source; then totals. MFH loan once.'),
   },
   async (args) => {
     try {

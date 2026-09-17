@@ -615,6 +615,7 @@ export class AchiClient {
     pdfOnly?: boolean
     includeFinancing?: boolean
     includeTenants?: boolean
+    includeMarket?: boolean
   }) {
     return this.json<{
       packId: string | null
