@@ -959,6 +959,12 @@ server.tool(
     includeVacant: z.boolean().optional(),
     dryRun: z.boolean().optional(),
     password: z.string().optional(),
+    pdfOnly: z.boolean().optional().describe('Light: Mietaufstellung.pdf only, no ZIP'),
+    includeFinancing: z.boolean().optional(),
+    includeTenants: z
+      .boolean()
+      .optional()
+      .describe('Default true. False omits tenant names (privacy for financing advisors).'),
   },
   async (args) => {
     try {

@@ -612,6 +612,9 @@ export class AchiClient {
     includeVacant?: boolean
     dryRun?: boolean
     password?: string
+    pdfOnly?: boolean
+    includeFinancing?: boolean
+    includeTenants?: boolean
   }) {
     return this.json<{
       packId: string | null
