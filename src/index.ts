@@ -1465,6 +1465,120 @@ server.tool(
   },
 )
 
+server.tool(
+  'get_financials_book',
+  'Open Elania USD books: CoA, banks, flags. Never invent FX rates or DE rental figures.',
+  { teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.getFinancialsBook(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'list_bank_transactions',
+  'List bank lines. state: uncategorized | suggested | categorized | excluded | transfer.',
+  { teamId: z.string().optional(), state: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.listBankTransactions(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'import_bank_csv',
+  'Import Mercury or Wise CSV. Idempotent. dryRun previews. EUR without statement rate is flagged, USD left null.',
+  {
+    bankId: z.string().uuid(),
+    csv: z.string(),
+    dryRun: z.boolean().optional(),
+    teamId: z.string().optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.importBankCsv(args.bankId, args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'categorize_transaction',
+  'Post a balanced USD journal for a bank line. Fails with missing_rate if EUR has no Wise/manual rate. dryRun previews.',
+  {
+    id: z.string().uuid(),
+    accountId: z.string().uuid().optional(),
+    accountCode: z.string().optional(),
+    dryRun: z.boolean().optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.categorizeTransaction(args.id, args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'exclude_transaction',
+  'Exclude a line from Elania books (Chi Ross / DE rentals).',
+  { id: z.string().uuid() },
+  async ({ id }) => {
+    try {
+      return jsonText(await client.excludeTransaction(id))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'get_report_pnl',
+  'P&L from posted journals only. Never invent.',
+  { teamId: z.string().optional(), from: z.string().optional(), to: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.getReportPnl(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'get_report_bs',
+  'Balance sheet as-of. Opening may be incomplete until a 1 Jan 2025 TB is posted.',
+  { teamId: z.string().optional(), asOf: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.getReportBs(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'get_report_cash',
+  'Cash per bank pot in native currency and USD home when a rate exists.',
+  { teamId: z.string().optional(), asOf: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.getReportCash(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
 // ── Start ───────────────────────────────────────────────────────────────────
 
 async function main() {

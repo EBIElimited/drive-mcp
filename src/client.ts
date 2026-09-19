@@ -810,4 +810,48 @@ export class AchiClient {
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },
     )
   }
+
+  async getFinancialsBook(opts: { teamId?: string } = {}) {
+    return this.json('/v1/financials/book', {}, opts)
+  }
+
+  async listBankTransactions(opts: { teamId?: string; state?: string } = {}) {
+    return this.json('/v1/financials/transactions', {}, opts)
+  }
+
+  async importBankCsv(bankId: string, body: { csv: string; dryRun?: boolean; teamId?: string }) {
+    return this.json(`/v1/financials/banks/${encodeURIComponent(bankId)}/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }, body.teamId ? { teamId: body.teamId } : undefined)
+  }
+
+  async categorizeTransaction(id: string, body: Record<string, unknown>) {
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/categorize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  async excludeTransaction(id: string) {
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/exclude`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    })
+  }
+
+  async getReportPnl(opts: { teamId?: string; from?: string; to?: string } = {}) {
+    return this.json('/v1/financials/reports/pnl', {}, opts)
+  }
+
+  async getReportBs(opts: { teamId?: string; asOf?: string } = {}) {
+    return this.json('/v1/financials/reports/bs', {}, opts)
+  }
+
+  async getReportCash(opts: { teamId?: string; asOf?: string } = {}) {
+    return this.json('/v1/financials/reports/cash', {}, opts)
+  }
 }
