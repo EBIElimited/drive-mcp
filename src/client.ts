@@ -941,8 +941,28 @@ export class AchiClient {
     return this.json('/v1/financials/reports/trial-balance', {}, opts)
   }
 
-  async getReportPnl(opts: { teamId?: string; from?: string; to?: string } = {}) {
+  async getReportPnl(opts: { teamId?: string; from?: string; to?: string; department?: string } = {}) {
     return this.json('/v1/financials/reports/pnl', {}, opts)
+  }
+
+  async getPnlByDepartment(opts: { teamId?: string; from?: string; to?: string } = {}) {
+    return this.json('/v1/financials/reports/pnl-by-department', {}, opts)
+  }
+
+  async listDepartments(opts: { teamId?: string } = {}) {
+    return this.json('/v1/financials/departments', {}, opts)
+  }
+
+  async createDepartment(body: { code: string; name: string; teamId?: string }) {
+    return this.json('/v1/financials/departments', jsonPost({ code: body.code, name: body.name }), { teamId: body.teamId })
+  }
+
+  async setTransactionDepartment(id: string, body: { departmentCode: string | null; teamId?: string }) {
+    return this.json(
+      `/v1/financials/transactions/${encodeURIComponent(id)}/department`,
+      jsonPost({ departmentCode: body.departmentCode }),
+      { teamId: body.teamId },
+    )
   }
 
   async getReportBs(opts: { teamId?: string; asOf?: string } = {}) {

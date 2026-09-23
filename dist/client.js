@@ -584,6 +584,18 @@ export class AchiClient {
     async getReportPnl(opts = {}) {
         return this.json('/v1/financials/reports/pnl', {}, opts);
     }
+    async getPnlByDepartment(opts = {}) {
+        return this.json('/v1/financials/reports/pnl-by-department', {}, opts);
+    }
+    async listDepartments(opts = {}) {
+        return this.json('/v1/financials/departments', {}, opts);
+    }
+    async createDepartment(body) {
+        return this.json('/v1/financials/departments', jsonPost({ code: body.code, name: body.name }), { teamId: body.teamId });
+    }
+    async setTransactionDepartment(id, body) {
+        return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/department`, jsonPost({ departmentCode: body.departmentCode }), { teamId: body.teamId });
+    }
     async getReportBs(opts = {}) {
         return this.json('/v1/financials/reports/bs', {}, opts);
     }

@@ -1537,6 +1537,7 @@ server.tool(
     teamId: z.string().optional(),
     accountId: z.string().uuid().optional(),
     accountCode: z.string().optional(),
+    departmentCode: z.string().optional().describe('Department inside the company (e.g. NH, EGS); omit for company-level'),
     dryRun: z.boolean().optional(),
   },
   async (args) => {
@@ -1714,6 +1715,7 @@ server.tool(
       debit: z.string().optional(),
       credit: z.string().optional(),
       nativeAmount: z.string().optional(),
+      departmentCode: z.string().optional(),
     })).min(2),
     dryRun: z.boolean().optional(),
     teamId: z.string().optional(),
@@ -1756,7 +1758,7 @@ server.tool(
 server.tool(
   'get_report_pnl',
   'P&L from posted journals only. Never invent.',
-  { teamId: z.string().optional(), from: z.string().optional(), to: z.string().optional() },
+  { teamId: z.string().optional(), from: z.string().optional(), to: z.string().optional(), department: z.string().optional().describe('Department code, or none for company-level lines') },
   async (args) => {
     try {
       return jsonText(await client.getReportPnl(args))
@@ -1765,6 +1767,59 @@ server.tool(
     }
   },
 )
+
+server.tool(
+  'list_departments',
+  'Departments (classes) inside the company\'s books, e.g. EGS Elania Game Studio, NH NeonHappi. Untagged = the company itself.',
+  { teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.listDepartments(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'create_department',
+  'Add a department to the company\'s books.',
+  { code: z.string(), name: z.string(), teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.createDepartment(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'set_transaction_department',
+  'Tag a bank line with a department (null untags); a posted line\'s journal follows. Only tag when the source says which product.',
+  { id: z.string().uuid(), departmentCode: z.string().nullable(), teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.setTransactionDepartment(args.id, args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'get_pnl_by_department',
+  'P&L per department plus company-level lines; columns add up to the company P&L.',
+  { from: z.string().optional(), to: z.string().optional(), teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.getPnlByDepartment(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
 
 server.tool(
   'get_report_bs',
