@@ -1499,8 +1499,8 @@ server.tool(
 )
 
 server.tool(
-  'list_bank_transactions',
-  'List bank lines with their receipts (documents[]). state: uncategorized | suggested | categorized | excluded | transfer. missingReceipt: only expenses still needing an invoice.',
+  'list_book_transactions',
+  'Financials books: list bank lines with their receipts (documents[]). state: uncategorized | suggested | categorized | excluded | transfer. missingReceipt: only expenses still needing an invoice.',
   { teamId: z.string().optional(), state: z.string().optional(), missingReceipt: z.boolean().optional() },
   async (args) => {
     try {
@@ -1576,10 +1576,15 @@ server.tool(
 
 server.tool(
   'upload_receipt',
-  'Upload a receipt or invoice (PDF/JPEG/PNG/HEIC/WebP, max 25 MB) from a local path into the books. Same file twice is stored once. Pass transactionId to attach it in the same call.',
+  'Upload a receipt or invoice (PDF/JPEG/PNG/HEIC/WebP, max 25 MB) from a local path into the books. Same file twice is stored once. Pass transactionId to attach it, or read the receipt and pass amount/date/vendor to get matches[] (autoMatch attaches only a single clear match).',
   {
     path: z.string().min(1).describe('Absolute path on this machine.'),
     transactionId: z.string().uuid().optional(),
+    amount: z.string().optional().describe('Receipt total as printed, e.g. "59.99"'),
+    currency: z.string().optional(),
+    date: z.string().optional().describe('Receipt date YYYY-MM-DD'),
+    vendor: z.string().optional(),
+    autoMatch: z.boolean().optional(),
     filename: z.string().optional(),
     mimeType: z.string().optional(),
     teamId: z.string().optional(),
@@ -1626,6 +1631,122 @@ server.tool(
   async (args) => {
     try {
       return jsonText(await client.listReceipts(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'find_receipt_matches',
+  'Bank lines a receipt belongs to. Read the receipt yourself and pass its total, date and vendor; returns ranked matches and a confident id when one clearly fits.',
+  { amount: z.string(), currency: z.string().optional(), date: z.string().optional(), vendor: z.string().optional(), teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.findReceiptMatches(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'find_transfer_matches',
+  'Open lines in the book\'s other accounts that look like the other side of this transfer (Mercury → Wise, Wise EUR → USD).',
+  { id: z.string().uuid(), teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.findTransferMatches(args.id, args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'post_transfer',
+  'Post two bank lines as one transfer between own accounts (no P&L). A currency conversion\'s USD gap goes to Exchange Gain/Loss; dryRun previews the journal.',
+  { id: z.string().uuid(), counterTransactionId: z.string().uuid(), dryRun: z.boolean().optional(), teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.postTransfer(args.id, args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'unpost_transaction',
+  'Undo a posted bank line or transfer: reverses its journal (kept for audit) and returns the line(s) to the inbox. Give a memo saying why.',
+  { id: z.string().uuid(), memo: z.string().optional(), occurredOn: z.string().optional(), teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.unpostTransaction(args.id, args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'reverse_journal',
+  'Reverse any journal (manual, opening, bank, transfer) with a mirror entry. occurredOn is needed only when the original period is locked.',
+  { id: z.string().uuid(), memo: z.string().optional(), occurredOn: z.string().optional(), teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.reverseJournal(args.id, args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'post_journal',
+  'Post a balanced manual journal in USD. kind "opening" enters opening balances (once per book). EUR accounts need nativeAmount per line. Use dryRun first.',
+  {
+    occurredOn: z.string(),
+    memo: z.string(),
+    kind: z.enum(['manual', 'opening']).optional(),
+    lines: z.array(z.object({
+      accountCode: z.string(),
+      debit: z.string().optional(),
+      credit: z.string().optional(),
+      nativeAmount: z.string().optional(),
+    })).min(2),
+    dryRun: z.boolean().optional(),
+    teamId: z.string().optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.postJournal(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'list_journals',
+  'General ledger: journals with lines, newest first. Filter by date range or account code.',
+  { from: z.string().optional(), to: z.string().optional(), accountCode: z.string().optional(), limit: z.number().int().optional(), teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.listJournals(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'get_trial_balance',
+  'Trial balance in USD as of a date; balanced must be true.',
+  { asOf: z.string().optional(), teamId: z.string().optional() },
+  async (args) => {
+    try {
+      return jsonText(await client.getTrialBalance(args))
     } catch (err) {
       return errorResult(err)
     }

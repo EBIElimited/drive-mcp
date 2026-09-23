@@ -854,7 +854,18 @@ export class AchiClient {
   }
 
   /** Read a receipt from disk and upload it; the server hashes it and stores it once per book. */
-  async uploadReceipt(opts: { path: string; filename?: string; mimeType?: string; transactionId?: string; teamId?: string }) {
+  async uploadReceipt(opts: {
+    path: string
+    filename?: string
+    mimeType?: string
+    transactionId?: string
+    amount?: string
+    currency?: string
+    date?: string
+    vendor?: string
+    autoMatch?: boolean
+    teamId?: string
+  }) {
     const { readFile, stat } = await import('node:fs/promises')
     const { basename } = await import('node:path')
     const info = await stat(opts.path)
@@ -867,6 +878,11 @@ export class AchiClient {
       contentBase64: bytes.toString('base64'),
       mimeType: opts.mimeType,
       transactionId: opts.transactionId,
+      amount: opts.amount,
+      currency: opts.currency,
+      date: opts.date,
+      vendor: opts.vendor,
+      autoMatch: opts.autoMatch,
     }), { teamId: opts.teamId })
   }
 
@@ -884,6 +900,45 @@ export class AchiClient {
 
   async listReceipts(opts: { teamId?: string; transactionId?: string } = {}) {
     return this.json('/v1/financials/documents', {}, opts)
+  }
+
+  async findReceiptMatches(opts: { amount: string; currency?: string; date?: string; vendor?: string; teamId?: string }) {
+    return this.json('/v1/financials/documents/matches', {}, opts)
+  }
+
+  async findTransferMatches(id: string, opts: { teamId?: string } = {}) {
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/transfer-candidates`, {}, opts)
+  }
+
+  async postTransfer(id: string, body: { counterTransactionId: string; dryRun?: boolean; teamId?: string }) {
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/transfer`, jsonPost(body), { teamId: body.teamId })
+  }
+
+  async unpostTransaction(id: string, body: { memo?: string; occurredOn?: string; teamId?: string } = {}) {
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/unpost`, jsonPost(body), { teamId: body.teamId })
+  }
+
+  async reverseJournal(id: string, body: { memo?: string; occurredOn?: string; teamId?: string } = {}) {
+    return this.json(`/v1/financials/journals/${encodeURIComponent(id)}/reverse`, jsonPost(body), { teamId: body.teamId })
+  }
+
+  async postJournal(body: {
+    occurredOn: string
+    memo: string
+    kind?: 'manual' | 'opening'
+    lines: Array<{ accountCode: string; debit?: string; credit?: string; nativeAmount?: string }>
+    dryRun?: boolean
+    teamId?: string
+  }) {
+    return this.json('/v1/financials/journals', jsonPost(body), { teamId: body.teamId })
+  }
+
+  async listJournals(opts: { from?: string; to?: string; accountCode?: string; limit?: number; teamId?: string } = {}) {
+    return this.json('/v1/financials/journals', {}, opts)
+  }
+
+  async getTrialBalance(opts: { asOf?: string; teamId?: string } = {}) {
+    return this.json('/v1/financials/reports/trial-balance', {}, opts)
   }
 
   async getReportPnl(opts: { teamId?: string; from?: string; to?: string } = {}) {

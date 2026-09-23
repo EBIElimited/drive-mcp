@@ -541,6 +541,11 @@ export class AchiClient {
             contentBase64: bytes.toString('base64'),
             mimeType: opts.mimeType,
             transactionId: opts.transactionId,
+            amount: opts.amount,
+            currency: opts.currency,
+            date: opts.date,
+            vendor: opts.vendor,
+            autoMatch: opts.autoMatch,
         }), { teamId: opts.teamId });
     }
     async attachReceipt(transactionId, documentId, opts = {}) {
@@ -551,6 +556,30 @@ export class AchiClient {
     }
     async listReceipts(opts = {}) {
         return this.json('/v1/financials/documents', {}, opts);
+    }
+    async findReceiptMatches(opts) {
+        return this.json('/v1/financials/documents/matches', {}, opts);
+    }
+    async findTransferMatches(id, opts = {}) {
+        return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/transfer-candidates`, {}, opts);
+    }
+    async postTransfer(id, body) {
+        return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/transfer`, jsonPost(body), { teamId: body.teamId });
+    }
+    async unpostTransaction(id, body = {}) {
+        return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/unpost`, jsonPost(body), { teamId: body.teamId });
+    }
+    async reverseJournal(id, body = {}) {
+        return this.json(`/v1/financials/journals/${encodeURIComponent(id)}/reverse`, jsonPost(body), { teamId: body.teamId });
+    }
+    async postJournal(body) {
+        return this.json('/v1/financials/journals', jsonPost(body), { teamId: body.teamId });
+    }
+    async listJournals(opts = {}) {
+        return this.json('/v1/financials/journals', {}, opts);
+    }
+    async getTrialBalance(opts = {}) {
+        return this.json('/v1/financials/reports/trial-balance', {}, opts);
     }
     async getReportPnl(opts = {}) {
         return this.json('/v1/financials/reports/pnl', {}, opts);
