@@ -260,6 +260,26 @@ export class AchiClient {
             body: JSON.stringify(body),
         });
     }
+    async listBuildingDocuments(buildingId) {
+        return this.json(`/v1/properties/buildings/${encodeURIComponent(buildingId)}/documents`);
+    }
+    async createBuildingDocument(buildingId, body) {
+        return this.json(`/v1/properties/buildings/${encodeURIComponent(buildingId)}/documents`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
+    async downloadBuildingDocument(buildingId, docId) {
+        const resp = await this.request(`/v1/properties/buildings/${encodeURIComponent(buildingId)}/documents/${encodeURIComponent(docId)}/download`);
+        const buf = new Uint8Array(await resp.arrayBuffer());
+        return {
+            mimeType: resp.headers.get('content-type')?.split(';')[0]?.trim() || 'application/octet-stream',
+            bytes: buf,
+            size: buf.length,
+            partial: false,
+        };
+    }
     async updateBuildingSpace(spaceId, body) {
         return this.json(`/v1/properties/spaces/${encodeURIComponent(spaceId)}`, {
             method: 'PATCH',
@@ -331,6 +351,13 @@ export class AchiClient {
             body: JSON.stringify(body),
         });
     }
+    async createProofOfRevenue(body) {
+        return this.json('/v1/properties/proof-of-revenue', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
     async downloadUnitDocument(unitId, docId) {
         const resp = await this.request(`/v1/properties/units/${encodeURIComponent(unitId)}/documents/${encodeURIComponent(docId)}/download`);
         const buf = new Uint8Array(await resp.arrayBuffer());
@@ -358,6 +385,13 @@ export class AchiClient {
     }
     async readMail(id) {
         return this.json(`/v1/mail/messages/${encodeURIComponent(id)}`);
+    }
+    async createMailDraft(body) {
+        return this.json('/v1/mail/drafts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
     }
     async listAgentNotes(opts = {}) {
         return this.json('/v1/agent/notes', {}, opts);
@@ -466,5 +500,41 @@ export class AchiClient {
     }
     async restoreCrmRecord(id, versionId) {
         return this.json(`/v1/crm/records/${encodeURIComponent(id)}/versions/${encodeURIComponent(versionId)}/restore`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    }
+    async getFinancialsBook(opts = {}) {
+        return this.json('/v1/financials/book', {}, opts);
+    }
+    async listBankTransactions(opts = {}) {
+        return this.json('/v1/financials/transactions', {}, opts);
+    }
+    async importBankCsv(bankId, body) {
+        return this.json(`/v1/financials/banks/${encodeURIComponent(bankId)}/import`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        }, body.teamId ? { teamId: body.teamId } : undefined);
+    }
+    async categorizeTransaction(id, body) {
+        return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/categorize`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
+    async excludeTransaction(id) {
+        return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/exclude`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}',
+        });
+    }
+    async getReportPnl(opts = {}) {
+        return this.json('/v1/financials/reports/pnl', {}, opts);
+    }
+    async getReportBs(opts = {}) {
+        return this.json('/v1/financials/reports/bs', {}, opts);
+    }
+    async getReportCash(opts = {}) {
+        return this.json('/v1/financials/reports/cash', {}, opts);
     }
 }

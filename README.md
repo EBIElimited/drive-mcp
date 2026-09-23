@@ -83,6 +83,7 @@ ACHI_API_TOKEN=achi_pat_xxx npx -y github:EBIElimited/drive-mcp
 | `list_property_visits` / `create_property_visit` / `update_property_visit` | Besichtigungsfahrten (never invent km) |
 | `list_mail_accounts` | Mailboxes (no passwords) |
 | `search_mail` / `read_mail` | Search and read mail |
+| `create_mail_draft` | Save a draft or reply in Drafts; the user sends it |
 | `list_agent_notes` | Drive `/Agent` notes |
 | `create_nk_letter` | Server NK PDF |
 

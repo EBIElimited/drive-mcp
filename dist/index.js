@@ -437,6 +437,45 @@ server.tool('update_building', 'Patch an MFH including the single house loan. Ne
         return errorResult(err);
     }
 });
+server.tool('list_building_documents', 'List MFH building trail files (Kaufvertrag, Nutzungsänderung, Exposé). Not unit leases.', { buildingId: z.string().uuid() }, async ({ buildingId }) => {
+    try {
+        return jsonText(await client.listBuildingDocuments(buildingId));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('create_building_document', 'Add a building-level trail file (Kaufvertrag, Nutzungsänderung, Exposé). Do not hang these on a Wohnung. JSON contentBase64 or fileName+mimeType.', {
+    buildingId: z.string().uuid(),
+    title: z.string().optional(),
+    category: z.string().optional().describe('deed | energy | other | …'),
+    documentDate: z.string().optional(),
+    notes: z.string().optional(),
+    fileName: z.string().optional(),
+    mimeType: z.string().optional(),
+    contentBase64: z.string().optional(),
+}, async ({ buildingId, ...body }) => {
+    try {
+        return jsonText(await client.createBuildingDocument(buildingId, body));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('download_building_document', 'Download a building trail file (bytes).', { buildingId: z.string().uuid(), docId: z.string().uuid() }, async ({ buildingId, docId }) => {
+    try {
+        const content = await client.downloadBuildingDocument(buildingId, docId);
+        return {
+            content: [
+                { type: 'text', text: `Downloaded ${content.size} bytes (${content.mimeType})` },
+                ...contentBytesToMcp(content, 'document', docId),
+            ],
+        };
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
 server.tool('create_building_space', 'Add a garage or Stellplatz on an MFH. occupancyUnitId = with-rented to a Wohnung (Cretu 3+4).', {
     buildingId: z.string().uuid(),
     label: z.string().min(1),
@@ -614,7 +653,7 @@ server.tool('list_unit_documents', 'List the Properties document trail for an ap
 server.tool('create_unit_document', 'Create a Properties trail document (NK letter, HV file, …). Send contentBase64 for the PDF/file. Use this instead of asking the user to re-attach. Uploading into Achi Properties/{unit} also creates a trail row.', {
     unitId: z.string().uuid(),
     title: z.string().optional(),
-    category: z.string().optional().describe('lease | deposit | hausgeld | nebenkosten | deed | repair | energy | insurance | tax | correspondence | other'),
+    category: z.string().optional().describe('lease | rent_increase | addendum | deposit | hausgeld | nebenkosten | deed | repair | energy | insurance | tax | correspondence | other'),
     documentDate: z.string().optional().describe('YYYY-MM-DD or DD.MM.YYYY — the letter/receipt date, not 31 Dec of the settlement year'),
     notes: z.string().optional(),
     fileName: z.string().optional(),
@@ -625,6 +664,10 @@ server.tool('create_unit_document', 'Create a Properties trail document (NK lett
     periodFrom: z.string().optional(),
     periodTo: z.string().optional(),
     year: z.number().int().optional(),
+    effectiveOn: z.string().optional().describe('When the rent in this document starts (YYYY-MM-DD)'),
+    rentEurosAfter: z.number().optional().describe('Nettokalt after this document. Required for Proof of Revenue.'),
+    isCurrentLease: z.boolean().optional(),
+    supersedesDocumentId: z.string().uuid().optional(),
 }, async (args) => {
     try {
         return jsonText(await client.createUnitDocument(args.unitId, {
@@ -640,25 +683,66 @@ server.tool('create_unit_document', 'Create a Properties trail document (NK lett
             periodFrom: args.periodFrom,
             periodTo: args.periodTo,
             year: args.year,
+            effectiveOn: args.effectiveOn,
+            rentEurosAfter: args.rentEurosAfter,
+            isCurrentLease: args.isCurrentLease,
+            supersedesDocumentId: args.supersedesDocumentId,
         }));
     }
     catch (err) {
         return errorResult(err);
     }
 });
-server.tool('update_unit_document', 'Patch a trail document’s title, documentDate (YYYY-MM-DD or DD.MM.YYYY), or notes. Use this for a wrong letter date — do not ask the user to edit the UI.', {
+server.tool('update_unit_document', 'Patch a trail document’s title, documentDate, category, effectiveOn, rentEurosAfter, isCurrentLease, or notes. Use this to tag a lease/increase for Proof of Revenue — do not ask the user to edit the UI.', {
     unitId: z.string().uuid(),
     docId: z.string().uuid(),
     title: z.string().optional(),
     documentDate: z.string().optional().describe('YYYY-MM-DD or DD.MM.YYYY — the letter/receipt date, not 31 Dec of the settlement year'),
     notes: z.string().nullable().optional(),
+    category: z.string().optional(),
+    effectiveOn: z.string().optional(),
+    rentEurosAfter: z.number().nullable().optional(),
+    isCurrentLease: z.boolean().optional(),
+    supersedesDocumentId: z.string().uuid().nullable().optional(),
 }, async (args) => {
     try {
         return jsonText(await client.updateUnitDocument(args.unitId, args.docId, {
             title: args.title,
             documentDate: args.documentDate,
             notes: args.notes,
+            category: args.category,
+            effectiveOn: args.effectiveOn,
+            rentEurosAfter: args.rentEurosAfter,
+            isCurrentLease: args.isCurrentLease,
+            supersedesDocumentId: args.supersedesDocumentId,
         }));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('create_proof_of_revenue', 'Build Mietaufstellung.pdf + Vertragstrail.zip from the written trail. Ist-Kalt is rentEurosAfter on lease/increase/addendum as of asOf — never invent rent. Default scope is occupied ETW; pass buildingId for one MFH. dryRun=true to preview. No bank mail. Share links expire in 14 days.', {
+    teamId: z.string().uuid().optional(),
+    buildingId: z.string().uuid().optional(),
+    unitIds: z.array(z.string().uuid()).optional(),
+    asOf: z.string().optional().describe('YYYY-MM-DD. Default today. Hadamar 456 € only on/after 2026-12-01 if tagged.'),
+    writtenOnly: z.boolean().optional().describe('Default true — skip units without rentEurosAfter'),
+    includeVacant: z.boolean().optional(),
+    dryRun: z.boolean().optional(),
+    password: z.string().optional(),
+    pdfOnly: z.boolean().optional().describe('Light: Mietaufstellung.pdf only, no ZIP'),
+    includeFinancing: z.boolean().optional(),
+    includeTenants: z
+        .boolean()
+        .optional()
+        .describe('Default true. False omits tenant names (privacy for financing advisors).'),
+    includeMarket: z
+        .boolean()
+        .optional()
+        .describe('Extra table: market value, remaining debt, source; then totals. MFH loan once.'),
+}, async (args) => {
+    try {
+        return jsonText(await client.createProofOfRevenue(args));
     }
     catch (err) {
         return errorResult(err);
@@ -735,6 +819,21 @@ server.tool('search_mail', 'Search mail the user can read (subject/from/snippet)
 server.tool('read_mail', 'Read one mail message including plaintext body. No passwords.', { id: z.string() }, async ({ id }) => {
     try {
         return jsonText(await client.readMail(id));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('create_mail_draft', 'Save a draft in Achi → Mail → Drafts. Agents cannot send; the user reviews and sends it. With replyToMessageId, to and "Re: subject" default from that message and the reply stays in the thread.', {
+    accountId: z.string().describe('Mailbox to draft from (list_mail_accounts)'),
+    text: z.string().min(1).describe('Plain-text body'),
+    replyToMessageId: z.string().optional().describe('Message id from search_mail / read_mail to reply to'),
+    to: z.array(z.string()).optional(),
+    cc: z.array(z.string()).optional(),
+    subject: z.string().optional(),
+}, async (args) => {
+    try {
+        return jsonText(await client.createMailDraft(args));
     }
     catch (err) {
         return errorResult(err);
@@ -1011,6 +1110,80 @@ server.tool('list_crm_record_versions', 'Version history for a CRM record (newes
 server.tool('restore_crm_record', 'Restore a CRM record to a prior version snapshot.', { id: z.string().uuid(), versionId: z.string().uuid() }, async ({ id, versionId }) => {
     try {
         return jsonText(await client.restoreCrmRecord(id, versionId));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('get_financials_book', 'Open Elania USD books: CoA, banks, flags. Never invent FX rates or DE rental figures.', { teamId: z.string().optional() }, async (args) => {
+    try {
+        return jsonText(await client.getFinancialsBook(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('list_bank_transactions', 'List bank lines. state: uncategorized | suggested | categorized | excluded | transfer.', { teamId: z.string().optional(), state: z.string().optional() }, async (args) => {
+    try {
+        return jsonText(await client.listBankTransactions(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('import_bank_csv', 'Import Mercury or Wise CSV. Idempotent. dryRun previews. EUR without statement rate is flagged, USD left null.', {
+    bankId: z.string().uuid(),
+    csv: z.string(),
+    dryRun: z.boolean().optional(),
+    teamId: z.string().optional(),
+}, async (args) => {
+    try {
+        return jsonText(await client.importBankCsv(args.bankId, args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('categorize_transaction', 'Post a balanced USD journal for a bank line. Fails with missing_rate if EUR has no Wise/manual rate. dryRun previews.', {
+    id: z.string().uuid(),
+    accountId: z.string().uuid().optional(),
+    accountCode: z.string().optional(),
+    dryRun: z.boolean().optional(),
+}, async (args) => {
+    try {
+        return jsonText(await client.categorizeTransaction(args.id, args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('exclude_transaction', 'Exclude a line from Elania books (Chi Ross / DE rentals).', { id: z.string().uuid() }, async ({ id }) => {
+    try {
+        return jsonText(await client.excludeTransaction(id));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('get_report_pnl', 'P&L from posted journals only. Never invent.', { teamId: z.string().optional(), from: z.string().optional(), to: z.string().optional() }, async (args) => {
+    try {
+        return jsonText(await client.getReportPnl(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('get_report_bs', 'Balance sheet as-of. Opening may be incomplete until a 1 Jan 2025 TB is posted.', { teamId: z.string().optional(), asOf: z.string().optional() }, async (args) => {
+    try {
+        return jsonText(await client.getReportBs(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('get_report_cash', 'Cash per bank pot in native currency and USD home when a rate exists.', { teamId: z.string().optional(), asOf: z.string().optional() }, async (args) => {
+    try {
+        return jsonText(await client.getReportCash(args));
     }
     catch (err) {
         return errorResult(err);

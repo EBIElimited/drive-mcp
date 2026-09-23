@@ -1091,6 +1091,26 @@ server.tool(
 )
 
 server.tool(
+  'create_mail_draft',
+  'Save a draft in Achi → Mail → Drafts. Agents cannot send; the user reviews and sends it. With replyToMessageId, to and "Re: subject" default from that message and the reply stays in the thread.',
+  {
+    accountId: z.string().describe('Mailbox to draft from (list_mail_accounts)'),
+    text: z.string().min(1).describe('Plain-text body'),
+    replyToMessageId: z.string().optional().describe('Message id from search_mail / read_mail to reply to'),
+    to: z.array(z.string()).optional(),
+    cc: z.array(z.string()).optional(),
+    subject: z.string().optional(),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.createMailDraft(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
   'list_agent_notes',
   'List Drive /Agent notes in a space (agent.md, learnings/letters.md, …). Requires a content-access token.',
   { teamId: z.string().optional() },

@@ -669,6 +669,14 @@ export class AchiClient {
     return this.json(`/v1/mail/messages/${encodeURIComponent(id)}`)
   }
 
+  async createMailDraft(body: Record<string, unknown>) {
+    return this.json('/v1/mail/drafts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
   async listAgentNotes(opts: { teamId?: string } = {}) {
     return this.json('/v1/agent/notes', {}, opts)
   }
