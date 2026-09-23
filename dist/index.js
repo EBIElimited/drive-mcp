@@ -1115,7 +1115,7 @@ server.tool('restore_crm_record', 'Restore a CRM record to a prior version snaps
         return errorResult(err);
     }
 });
-server.tool('get_financials_book', 'Open Elania USD books: CoA, banks, flags. Never invent FX rates or DE rental figures.', { teamId: z.string().optional() }, async (args) => {
+server.tool('get_financials_book', 'Open the space\'s USD books: chart of accounts, bank pots (ids for import_bank_csv), coding rules, flags. Never invent FX rates.', { teamId: z.string().optional() }, async (args) => {
     try {
         return jsonText(await client.getFinancialsBook(args));
     }
@@ -1123,7 +1123,7 @@ server.tool('get_financials_book', 'Open Elania USD books: CoA, banks, flags. Ne
         return errorResult(err);
     }
 });
-server.tool('list_bank_transactions', 'List bank lines. state: uncategorized | suggested | categorized | excluded | transfer.', { teamId: z.string().optional(), state: z.string().optional() }, async (args) => {
+server.tool('list_bank_transactions', 'List bank lines with their receipts (documents[]). state: uncategorized | suggested | categorized | excluded | transfer. missingReceipt: only expenses still needing an invoice.', { teamId: z.string().optional(), state: z.string().optional(), missingReceipt: z.boolean().optional() }, async (args) => {
     try {
         return jsonText(await client.listBankTransactions(args));
     }
@@ -1131,7 +1131,7 @@ server.tool('list_bank_transactions', 'List bank lines. state: uncategorized | s
         return errorResult(err);
     }
 });
-server.tool('import_bank_csv', 'Import Mercury or Wise CSV. Idempotent. dryRun previews. EUR without statement rate is flagged, USD left null.', {
+server.tool('import_bank_csv', 'Import a Mercury or Wise CSV export as-is. Idempotent. dryRun previews. A Wise rate counts only for conversions to/from USD; other foreign lines are flagged missing_usd_rate with USD left null (use set_transaction_rate).', {
     bankId: z.string().uuid(),
     csv: z.string(),
     dryRun: z.boolean().optional(),
@@ -1144,8 +1144,9 @@ server.tool('import_bank_csv', 'Import Mercury or Wise CSV. Idempotent. dryRun p
         return errorResult(err);
     }
 });
-server.tool('categorize_transaction', 'Post a balanced USD journal for a bank line. Fails with missing_rate if EUR has no Wise/manual rate. dryRun previews.', {
+server.tool('categorize_transaction', 'Post a balanced USD journal for a bank line, once (409 ALREADY_POSTED on retry). Fails with missing_rate if a foreign line has no rate. dryRun previews.', {
     id: z.string().uuid(),
+    teamId: z.string().optional(),
     accountId: z.string().uuid().optional(),
     accountCode: z.string().optional(),
     dryRun: z.boolean().optional(),
@@ -1157,9 +1158,55 @@ server.tool('categorize_transaction', 'Post a balanced USD journal for a bank li
         return errorResult(err);
     }
 });
-server.tool('exclude_transaction', 'Exclude a line from Elania books (Chi Ross / DE rentals).', { id: z.string().uuid() }, async ({ id }) => {
+server.tool('exclude_transaction', 'Exclude an open line that belongs to another entity (e.g. Chi Ross / DE rentals in the Elania books).', { id: z.string().uuid(), teamId: z.string().optional() }, async ({ id, teamId }) => {
     try {
-        return jsonText(await client.excludeTransaction(id));
+        return jsonText(await client.excludeTransaction(id, { teamId }));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('set_transaction_rate', 'Record a USD rate (USD per 1 unit of the line currency) on an open foreign line, e.g. from the Wise app or invoice. Stored as a manual rate and audited. Only from a real source — never guess.', { id: z.string().uuid(), rate: z.string().describe('e.g. "1.0850"'), teamId: z.string().optional() }, async ({ id, rate, teamId }) => {
+    try {
+        return jsonText(await client.setTransactionRate(id, { rate, teamId }));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('upload_receipt', 'Upload a receipt or invoice (PDF/JPEG/PNG/HEIC/WebP, max 25 MB) from a local path into the books. Same file twice is stored once. Pass transactionId to attach it in the same call.', {
+    path: z.string().min(1).describe('Absolute path on this machine.'),
+    transactionId: z.string().uuid().optional(),
+    filename: z.string().optional(),
+    mimeType: z.string().optional(),
+    teamId: z.string().optional(),
+}, async (args) => {
+    try {
+        return jsonText(await client.uploadReceipt(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('attach_receipt', 'Attach an uploaded receipt (documentId from upload_receipt or list_receipts) to a bank line. Idempotent; clears missing_invoice_pdf.', { transactionId: z.string().uuid(), documentId: z.string().uuid(), teamId: z.string().optional() }, async ({ transactionId, documentId, teamId }) => {
+    try {
+        return jsonText(await client.attachReceipt(transactionId, documentId, { teamId }));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('detach_receipt', 'Remove a receipt from a bank line (the file stays in the books).', { transactionId: z.string().uuid(), documentId: z.string().uuid(), teamId: z.string().optional() }, async ({ transactionId, documentId, teamId }) => {
+    try {
+        return jsonText(await client.detachReceipt(transactionId, documentId, { teamId }));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('list_receipts', 'List receipts in the books, or the ones on one transaction. hasFile=false means only a sha256 was registered.', { transactionId: z.string().uuid().optional(), teamId: z.string().optional() }, async (args) => {
+    try {
+        return jsonText(await client.listReceipts(args));
     }
     catch (err) {
         return errorResult(err);
@@ -1181,7 +1228,7 @@ server.tool('get_report_bs', 'Balance sheet as-of. Opening may be incomplete unt
         return errorResult(err);
     }
 });
-server.tool('get_report_cash', 'Cash per bank pot in native currency and USD home when a rate exists.', { teamId: z.string().optional(), asOf: z.string().optional() }, async (args) => {
+server.tool('get_report_cash', 'Cash per bank pot in native currency. USD (amountHome) only when every line has a rate; otherwise null with missingRateCount.', { teamId: z.string().optional(), asOf: z.string().optional() }, async (args) => {
     try {
         return jsonText(await client.getReportCash(args));
     }

@@ -70,6 +70,12 @@ export interface ContentBytes {
 /** MCP upload_file (text/base64) hard cap. Larger files: upload_file_from_path. */
 export const INLINE_UPLOAD_MAX_BYTES = 8 * 1024 * 1024
 
+const RECEIPT_MAX_BYTES = 25 * 1024 * 1024
+
+function jsonPost(body: unknown): RequestInit {
+  return { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+}
+
 export class AchiApiError extends Error {
   constructor(
     public readonly status: number,
@@ -823,32 +829,61 @@ export class AchiClient {
     return this.json('/v1/financials/book', {}, opts)
   }
 
-  async listBankTransactions(opts: { teamId?: string; state?: string } = {}) {
-    return this.json('/v1/financials/transactions', {}, opts)
+  async listBankTransactions(opts: { teamId?: string; state?: string; missingReceipt?: boolean } = {}) {
+    return this.json('/v1/financials/transactions', {}, {
+      teamId: opts.teamId,
+      state: opts.state,
+      missingReceipt: opts.missingReceipt ? 1 : undefined,
+    })
   }
 
   async importBankCsv(bankId: string, body: { csv: string; dryRun?: boolean; teamId?: string }) {
-    return this.json(`/v1/financials/banks/${encodeURIComponent(bankId)}/import`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    }, body.teamId ? { teamId: body.teamId } : undefined)
+    return this.json(`/v1/financials/banks/${encodeURIComponent(bankId)}/import`, jsonPost(body), { teamId: body.teamId })
   }
 
-  async categorizeTransaction(id: string, body: Record<string, unknown>) {
-    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/categorize`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+  async categorizeTransaction(id: string, body: { teamId?: string } & Record<string, unknown>) {
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/categorize`, jsonPost(body), { teamId: body.teamId })
   }
 
-  async excludeTransaction(id: string) {
-    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/exclude`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{}',
-    })
+  async excludeTransaction(id: string, opts: { teamId?: string } = {}) {
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/exclude`, jsonPost({}), { teamId: opts.teamId })
+  }
+
+  async setTransactionRate(id: string, body: { rate: string; teamId?: string }) {
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/rate`, jsonPost({ rate: body.rate }), { teamId: body.teamId })
+  }
+
+  /** Read a receipt from disk and upload it; the server hashes it and stores it once per book. */
+  async uploadReceipt(opts: { path: string; filename?: string; mimeType?: string; transactionId?: string; teamId?: string }) {
+    const { readFile, stat } = await import('node:fs/promises')
+    const { basename } = await import('node:path')
+    const info = await stat(opts.path)
+    if (info.size > RECEIPT_MAX_BYTES) {
+      throw new AchiApiError(413, 'FILE_TOO_LARGE', `Receipts are limited to 25 MB (${opts.path} is ${info.size} bytes)`)
+    }
+    const bytes = await readFile(opts.path)
+    return this.json('/v1/financials/documents', jsonPost({
+      filename: (opts.filename ?? basename(opts.path)).trim(),
+      contentBase64: bytes.toString('base64'),
+      mimeType: opts.mimeType,
+      transactionId: opts.transactionId,
+    }), { teamId: opts.teamId })
+  }
+
+  async attachReceipt(transactionId: string, documentId: string, opts: { teamId?: string } = {}) {
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(transactionId)}/attach`, jsonPost({ documentId }), { teamId: opts.teamId })
+  }
+
+  async detachReceipt(transactionId: string, documentId: string, opts: { teamId?: string } = {}) {
+    return this.json(
+      `/v1/financials/transactions/${encodeURIComponent(transactionId)}/documents/${encodeURIComponent(documentId)}`,
+      { method: 'DELETE' },
+      { teamId: opts.teamId },
+    )
+  }
+
+  async listReceipts(opts: { teamId?: string; transactionId?: string } = {}) {
+    return this.json('/v1/financials/documents', {}, opts)
   }
 
   async getReportPnl(opts: { teamId?: string; from?: string; to?: string } = {}) {
