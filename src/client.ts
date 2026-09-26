@@ -667,8 +667,46 @@ export class AchiClient {
     return this.json('/v1/mail/accounts', {}, opts)
   }
 
-  async searchMail(opts: { teamId?: string; accountId?: string; q?: string; mailbox?: string; limit?: number }) {
-    return this.json('/v1/mail/messages', {}, opts)
+  async searchMail(opts: {
+    teamId?: string
+    accountId?: string
+    q?: string
+    mailbox?: string
+    from?: string
+    unread?: boolean
+    flagged?: boolean
+    hasAttachments?: boolean
+    since?: string
+    until?: string
+    before?: string
+    limit?: number
+  }) {
+    const { unread, flagged, hasAttachments, ...rest } = opts
+    return this.json('/v1/mail/messages', {}, {
+      ...rest,
+      unread: unread ? 1 : undefined,
+      flagged: flagged ? 1 : undefined,
+      hasAttachments: hasAttachments ? 1 : undefined,
+    })
+  }
+
+  async readMailThread(id: string) {
+    return this.json(`/v1/mail/messages/${encodeURIComponent(id)}/thread`)
+  }
+
+  async readMailAttachment(id: string): Promise<ContentBytes & { filename: string | null }> {
+    const resp = await this.request(`/v1/mail/attachments/${encodeURIComponent(id)}`)
+    const buf = new Uint8Array(await resp.arrayBuffer())
+    const disposition = resp.headers.get('content-disposition') || ''
+    const star = /filename\*=UTF-8''([^;]+)/i.exec(disposition)
+    const plain = /filename="([^"]+)"/i.exec(disposition)
+    return {
+      mimeType: resp.headers.get('content-type')?.split(';')[0]?.trim() || 'application/octet-stream',
+      bytes: buf,
+      size: buf.length,
+      partial: false,
+      filename: star ? decodeURIComponent(star[1]!) : plain?.[1] ?? null,
+    }
   }
 
   async readMail(id: string) {

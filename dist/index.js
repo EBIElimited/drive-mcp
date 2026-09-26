@@ -16,6 +16,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { AchiClient, AchiApiError, INLINE_UPLOAD_MAX_BYTES } from './client.js';
 // ── Configuration ───────────────────────────────────────────────────────────
 const token = process.env.ACHI_API_TOKEN;
@@ -805,8 +807,15 @@ server.tool('list_mail_accounts', 'Mailboxes the user can read. Never returns pa
 server.tool('search_mail', 'Search mail the user can read (subject/from/snippet). No passwords.', {
     teamId: z.string().optional(),
     accountId: z.string().optional(),
-    q: z.string().optional(),
-    mailbox: z.string().optional().describe('INBOX or SENT'),
+    q: z.string().optional().describe('Subject, sender, recipients or preview text'),
+    mailbox: z.enum(['INBOX', 'SENT', 'DRAFTS', 'TRASH']).optional(),
+    from: z.string().optional().describe('Sender address or name contains'),
+    unread: z.boolean().optional(),
+    flagged: z.boolean().optional(),
+    hasAttachments: z.boolean().optional(),
+    since: z.string().optional().describe('ISO date, inclusive'),
+    until: z.string().optional().describe('ISO date, exclusive'),
+    before: z.string().optional().describe('nextBefore from the previous page'),
     limit: z.number().int().min(1).max(100).optional(),
 }, async (args) => {
     try {
@@ -816,7 +825,7 @@ server.tool('search_mail', 'Search mail the user can read (subject/from/snippet)
         return errorResult(err);
     }
 });
-server.tool('read_mail', 'Read one mail message including plaintext body. No passwords.', { id: z.string() }, async ({ id }) => {
+server.tool('read_mail', 'Read one mail message: plain-text body (converted from HTML when needed) and its attachment list. No passwords.', { id: z.string() }, async ({ id }) => {
     try {
         return jsonText(await client.readMail(id));
     }
@@ -834,6 +843,33 @@ server.tool('create_mail_draft', 'Save a draft in Achi → Mail → Drafts. Agen
 }, async (args) => {
     try {
         return jsonText(await client.createMailDraft(args));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('read_mail_thread', 'The conversation a message belongs to (same mailbox, same subject without Re:/Fwd:), oldest first. Read bodies with read_mail.', { id: z.string().describe('Any message id in the conversation') }, async ({ id }) => {
+    try {
+        return jsonText(await client.readMailThread(id));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
+server.tool('read_mail_attachment', 'Open a mail attachment (id from read_mail). Text and images come back inline; pass saveTo to write the file (e.g. a PDF) to a local path instead.', {
+    id: z.string(),
+    saveTo: z.string().optional().describe('Local file or folder path to save the attachment to'),
+}, async ({ id, saveTo }) => {
+    try {
+        const file = await client.readMailAttachment(id);
+        const name = (file.filename || `attachment-${id}`).replace(/[\\/]/g, '_');
+        if (saveTo) {
+            const target = /[\\/]$/.test(saveTo) ? resolve(saveTo, name) : resolve(saveTo);
+            await mkdir(dirname(target), { recursive: true });
+            await writeFile(target, file.bytes);
+            return jsonText({ saved: target, filename: name, mimeType: file.mimeType, sizeBytes: file.size });
+        }
+        return { content: contentBytesToMcp(file, name, id) };
     }
     catch (err) {
         return errorResult(err);

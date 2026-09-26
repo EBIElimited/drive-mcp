@@ -85,6 +85,8 @@ ACHI_API_TOKEN=achi_pat_xxx npx -y github:EBIElimited/drive-mcp
 | `search_mail` / `read_mail` | Search and read mail |
 | `create_mail_draft` | Save a draft or reply in Drafts; the user sends it |
 | `manage_mail` | Mark read/unread, flag, move to Trash or back to Inbox |
+| `read_mail_thread` | The whole conversation a message belongs to |
+| `read_mail_attachment` | Open or save a mail attachment |
 | `list_agent_notes` | Drive `/Agent` notes |
 | `create_nk_letter` | Server NK PDF |
 
