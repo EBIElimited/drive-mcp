@@ -1111,6 +1111,24 @@ server.tool(
 )
 
 server.tool(
+  'manage_mail',
+  'Triage mail in Achi: mark read/unread, flag/unflag, move to Trash or back to Inbox. Up to 100 message ids per call. Needs manage access to the mailbox. Changes Achi, not the mail server.',
+  {
+    ids: z.array(z.string()).min(1).max(100).describe('Message ids from search_mail'),
+    seen: z.boolean().optional(),
+    flagged: z.boolean().optional(),
+    mailbox: z.enum(['TRASH', 'INBOX']).optional().describe('TRASH to delete, INBOX to restore'),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.manageMail(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
   'list_agent_notes',
   'List Drive /Agent notes in a space (agent.md, learnings/letters.md, …). Requires a content-access token.',
   { teamId: z.string().optional() },

@@ -390,6 +390,13 @@ export class AchiClient {
     async readMail(id) {
         return this.json(`/v1/mail/messages/${encodeURIComponent(id)}`);
     }
+    async manageMail(body) {
+        return this.json('/v1/mail/messages/manage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
     async createMailDraft(body) {
         return this.json('/v1/mail/drafts', {
             method: 'POST',
