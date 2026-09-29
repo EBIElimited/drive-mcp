@@ -458,6 +458,73 @@ server.tool(
 
 // ── Properties / Mail / Agent / letters ─────────────────────────────────────
 
+const valuationShape = {
+  marketValueEuros: z.number().positive().optional().describe('Realistic SALE price in € (not asking price). Required for buildings; for ETW units unless you only update rent.'),
+  valueLowEuros: z.number().positive().optional().describe('Lower end of the range'),
+  valueHighEuros: z.number().positive().optional().describe('Upper end of the range'),
+  saleEurPerSqm: z.number().positive().optional().describe('€/m² living area your value implies or the comps showed'),
+  marketRentEurPerSqm: z.number().positive().optional().describe('Units only: local market cold rent €/m² from comparable rent listings'),
+  mietspiegelEurPerSqm: z.number().positive().optional().describe('Units only: Mietspiegel cold rent €/m² for this flat'),
+  mietspiegelSource: z.string().optional().describe('Units only: which Mietspiegel, year, table/row'),
+  method: z.string().describe('How: e.g. "Vergleichswert: Marktbericht Kreis Siegen-Wittgenstein 2026 + 5 Angebote −10 %, Ertragswert-Check Faktor 19"'),
+  summary: z.string().describe('1–3 sentences: comps, adjustments (Baujahr, energy, condition, let), why this value'),
+  confidence: z.enum(['low', 'medium', 'high']).describe('high only with a Marktbericht figure plus ≥3 good comps'),
+  sources: z
+    .array(z.object({ url: z.string().url(), title: z.string().optional(), note: z.string().optional().describe('e.g. "3 Zi, 76 m², Bj 1975, 129.000 € Angebot"') }))
+    .min(1)
+    .describe('Every page you used (listings, Marktbericht, BORIS, Mietspiegel)'),
+  asOf: z.string().optional().describe('YYYY-MM-DD, default today'),
+  dryRun: z.boolean().optional().describe('true = preview with warnings, nothing saved. Always do this first.'),
+  force: z.boolean().optional().describe('Overwrite a value from a Gutachten. Only when the user said so.'),
+}
+
+server.tool(
+  'get_valuation_worklist',
+  'Start here when the user asks to update market values ("aktualisiere die Marktwerte", Verkehrswert, Marktmiete, Mietspiegel). Returns every property (ETW unit, MFH building, flats inside an MFH) with facts (m², Baujahr, rent, purchase price/date), the current value and rent benchmark, needs (value | rent), flags (missing, stale, portal_average, far_from_recent_purchase, no_rent_benchmark) and `instructions`: the research playbook. Follow it: research every address on the web, then write with set_unit_valuation / set_building_valuation.',
+  {
+    teamId: z.string().uuid().optional(),
+    scope: z.enum(['all']).optional().describe('all = personal + every team space'),
+    only: z.enum(['due']).optional().describe('due = only objects that need research'),
+  },
+  async (args) => {
+    try {
+      return jsonText(await client.getValuationWorklist(args))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'set_unit_valuation',
+  'Write researched market data for one unit. ETW: marketValueEuros (+range) and rent €/m². A flat inside an MFH: rent fields only (its value lives on the building). Send dryRun:true first and check the warnings. Never write a portal city average as the value.',
+  { unitId: z.string().uuid(), ...valuationShape },
+  async ({ unitId, ...body }) => {
+    try {
+      return jsonText(await client.setValuation('unit', unitId, body))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
+server.tool(
+  'set_building_valuation',
+  'Write the researched market value of a whole MFH (Mehrfamilienhaus). Use Ertragswert (annual Kalt × local Rohertragsfaktor) cross-checked with comps and Bodenrichtwert. Send dryRun:true first.',
+  {
+    buildingId: z.string().uuid(),
+    ...valuationShape,
+    marketValueEuros: z.number().positive().describe('Realistic SALE price of the whole building in €'),
+  },
+  async ({ buildingId, ...body }) => {
+    try {
+      return jsonText(await client.setValuation('building', buildingId, body))
+    } catch (err) {
+      return errorResult(err)
+    }
+  },
+)
+
 server.tool(
   'list_units',
   'List Properties apartments. Pass teamId for a space such as Chi Ross. scope=all lists every space. buildingId / kind=etw|building for MFH vs ETW. financing filters by loanStatus. summary.remainingDebtEuros counts each building loan once — never SUM remainingDebt across units of the same building.',

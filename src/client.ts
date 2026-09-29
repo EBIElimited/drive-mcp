@@ -368,6 +368,20 @@ export class AchiClient {
 
   // ── Properties / Mail / Agent / letters ────────────────────────────────
 
+  /** Market-value worklist + research playbook (instructions). */
+  async getValuationWorklist(opts: { teamId?: string; scope?: 'all'; only?: 'due' } = {}) {
+    return this.json<{ instructions: string; objects: unknown[]; counts: unknown }>('/v1/properties/valuation', {}, opts)
+  }
+
+  async setValuation(kind: 'unit' | 'building', id: string, body: Record<string, unknown>) {
+    const base = kind === 'unit' ? '/v1/properties/units/' : '/v1/properties/buildings/'
+    return this.json<unknown>(`${base}${encodeURIComponent(id)}/valuation`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
   async listUnits(opts: { teamId?: string; scope?: 'all'; financing?: string; buildingId?: string; kind?: string } = {}) {
     return this.json<{
       scope: string

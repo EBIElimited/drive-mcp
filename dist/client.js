@@ -234,6 +234,18 @@ export class AchiClient {
         });
     }
     // ── Properties / Mail / Agent / letters ────────────────────────────────
+    /** Market-value worklist + research playbook (instructions). */
+    async getValuationWorklist(opts = {}) {
+        return this.json('/v1/properties/valuation', {}, opts);
+    }
+    async setValuation(kind, id, body) {
+        const base = kind === 'unit' ? '/v1/properties/units/' : '/v1/properties/buildings/';
+        return this.json(`${base}${encodeURIComponent(id)}/valuation`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }
     async listUnits(opts = {}) {
         return this.json('/v1/properties/units', {}, opts);
     }
