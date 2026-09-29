@@ -365,6 +365,11 @@ const valuationShape = {
     asOf: z.string().optional().describe('YYYY-MM-DD, default today'),
     dryRun: z.boolean().optional().describe('true = preview with warnings, nothing saved. Always do this first.'),
     force: z.boolean().optional().describe('Overwrite a value from a Gutachten. Only when the user said so.'),
+    facts: z
+        .record(z.string(), z.unknown())
+        .optional()
+        .describe('Verified facts about the property you found while researching: buildingYear, rooms, squareMeters, energy, heating, heatingYear, energyCertExpires, majorRenovations, garage, coOwnershipShare (units) / buildingYear, energy, heating, energyCertExpires (buildings); anything else (floor, unitsInBuilding, hausgeldEuros, bodenrichtwertEurPerSqm, …) is kept with the research. Add sources: [{url}]. Empty fields are filled; differing stored values come back as factConflicts.'),
+    overwriteFacts: z.boolean().optional().describe('Replace stored facts that differ. Only when the user confirmed.'),
 };
 server.tool('get_valuation_worklist', 'Start here when the user asks to update market values ("aktualisiere die Marktwerte", Verkehrswert, Marktmiete, Mietspiegel). Returns every property (ETW unit, MFH building, flats inside an MFH) with facts (m², Baujahr, rent, purchase price/date), the current value and rent benchmark, needs (value | rent), flags (missing, stale, portal_average, far_from_recent_purchase, no_rent_benchmark) and `instructions`: the research playbook. Follow it: research every address on the web, then write with set_unit_valuation / set_building_valuation.', {
     teamId: z.string().uuid().optional(),

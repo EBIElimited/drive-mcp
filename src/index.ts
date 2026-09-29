@@ -476,6 +476,13 @@ const valuationShape = {
   asOf: z.string().optional().describe('YYYY-MM-DD, default today'),
   dryRun: z.boolean().optional().describe('true = preview with warnings, nothing saved. Always do this first.'),
   force: z.boolean().optional().describe('Overwrite a value from a Gutachten. Only when the user said so.'),
+  facts: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe(
+      'Verified facts about the property you found while researching: buildingYear, rooms, squareMeters, energy, heating, heatingYear, energyCertExpires, majorRenovations, garage, coOwnershipShare (units) / buildingYear, energy, heating, energyCertExpires (buildings); anything else (floor, unitsInBuilding, hausgeldEuros, bodenrichtwertEurPerSqm, …) is kept with the research. Add sources: [{url}]. Empty fields are filled; differing stored values come back as factConflicts.',
+    ),
+  overwriteFacts: z.boolean().optional().describe('Replace stored facts that differ. Only when the user confirmed.'),
 }
 
 server.tool(
