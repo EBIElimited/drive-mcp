@@ -695,6 +695,30 @@ server.tool('create_unit_document', 'Create a Properties trail document (NK lett
         return errorResult(err);
     }
 });
+server.tool('schedule_rent_change', 'Schedule a future cold-rent change (Mieterhöhung ab …) for a unit. Creates a rent_increase trail document with effectiveOn and rentEurosAfter; the unit then shows nextRentChange and its Kalt switches automatically on that day (Europe/Berlin). Attach the signed letter later with update_unit_document or create_unit_document. To cancel, delete that document.', {
+    unitId: z.string().uuid(),
+    effectiveOn: z.string().describe('First day of the new rent, YYYY-MM-DD (must be in the future), e.g. 2027-01-01'),
+    rentEurosAfter: z.number().positive().describe('New Nettokaltmiete in euros per month, e.g. 456'),
+    letterDate: z.string().optional().describe('Date of the increase letter, YYYY-MM-DD. Default today.'),
+    title: z.string().optional().describe('Default: "Mieterhöhung ab DD.MM.YYYY: N €"'),
+    notes: z.string().optional(),
+}, async (args) => {
+    try {
+        const [y, m, d] = args.effectiveOn.split('-');
+        return jsonText(await client.createUnitDocument(args.unitId, {
+            title: args.title || `Mieterhöhung ab ${d}.${m}.${y}: ${args.rentEurosAfter} €`,
+            category: 'rent_increase',
+            documentDate: args.letterDate || new Date().toISOString().slice(0, 10),
+            effectiveOn: args.effectiveOn,
+            rentEurosAfter: args.rentEurosAfter,
+            notes: args.notes,
+            source: 'other',
+        }));
+    }
+    catch (err) {
+        return errorResult(err);
+    }
+});
 server.tool('update_unit_document', 'Patch a trail document’s title, documentDate, category, effectiveOn, rentEurosAfter, isCurrentLease, or notes. Use this to tag a lease/increase for Proof of Revenue — do not ask the user to edit the UI.', {
     unitId: z.string().uuid(),
     docId: z.string().uuid(),
