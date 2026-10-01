@@ -1,5 +1,5 @@
 /**
- * Thin HTTP client over the Achi Drive /v1 REST API.
+ * Thin HTTP client over the Achi REST API (/v1 and /studio).
  * Translates JSON responses to typed objects; throws on non-2xx.
  */
 
@@ -72,8 +72,9 @@ export const INLINE_UPLOAD_MAX_BYTES = 8 * 1024 * 1024
 
 const RECEIPT_MAX_BYTES = 25 * 1024 * 1024
 
-function jsonPost(body: unknown): RequestInit {
-  return { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+/** RequestInit for a JSON body. */
+function jsonBody(method: 'POST' | 'PUT' | 'PATCH', body: unknown): RequestInit {
+  return { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
 }
 
 export class AchiApiError extends Error {
@@ -132,6 +133,17 @@ export class AchiClient {
       throw new AchiApiError(resp.status, code, message)
     }
     return resp
+  }
+
+  /** Read a binary response body. `mimeType` overrides the response header. */
+  private async bytes(resp: Response, mimeType?: string): Promise<ContentBytes> {
+    const bytes = new Uint8Array(await resp.arrayBuffer())
+    return {
+      mimeType: mimeType || resp.headers.get('content-type')?.split(';')[0]?.trim() || 'application/octet-stream',
+      bytes,
+      size: bytes.length,
+      partial: resp.status === 206,
+    }
   }
 
   private async json<T>(path: string, init: RequestInit = {}, query?: Record<string, unknown>): Promise<T> {
@@ -198,24 +210,12 @@ export class AchiClient {
       headers['Range'] = `bytes=${start}-${end}`
     }
     const resp = await this.request(`/v1/files/${encodeURIComponent(id)}/content`, { headers })
-    const buf = new Uint8Array(await resp.arrayBuffer())
-    return {
-      mimeType: resp.headers.get('content-type')?.split(';')[0]?.trim() || 'application/octet-stream',
-      bytes: buf,
-      size: buf.length,
-      partial: resp.status === 206,
-    }
+    return this.bytes(resp)
   }
 
   async readThumbnail(id: string): Promise<ContentBytes> {
     const resp = await this.request(`/v1/files/${encodeURIComponent(id)}/thumbnail`)
-    const buf = new Uint8Array(await resp.arrayBuffer())
-    return {
-      mimeType: resp.headers.get('content-type') || 'image/jpeg',
-      bytes: buf,
-      size: buf.length,
-      partial: false,
-    }
+    return this.bytes(resp, resp.headers.get('content-type') ? undefined : 'image/jpeg')
   }
 
   // ── Mutations ───────────────────────────────────────────────────────────
@@ -288,17 +288,13 @@ export class AchiClient {
       uploadId: string
       chunkSize: number
       chunkCount: number
-    }>('/v1/files/uploads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: opts.name,
-        sizeBytes: opts.sizeBytes,
-        mimeType: opts.mimeType,
-        parentFolderId: opts.parentFolderId ?? null,
-        teamId: opts.teamId ?? null,
-      }),
-    })
+    }>('/v1/files/uploads', jsonBody('POST', {
+      name: opts.name,
+      sizeBytes: opts.sizeBytes,
+      mimeType: opts.mimeType,
+      parentFolderId: opts.parentFolderId ?? null,
+      teamId: opts.teamId ?? null,
+    }))
 
     const concurrency = Math.min(4, session.chunkCount)
     let next = 0
@@ -328,11 +324,7 @@ export class AchiClient {
     id: string,
     body: { name?: string; starred?: boolean; trashed?: boolean; parentFolderId?: string | null },
   ): Promise<FilePublic> {
-    return this.json<FilePublic>(`/v1/files/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return this.json<FilePublic>(`/v1/files/${encodeURIComponent(id)}`, jsonBody('PATCH', body))
   }
 
   async deleteFile(id: string, opts: { permanent?: boolean } = {}): Promise<{ ok: boolean; id: string; permanent: boolean }> {
@@ -342,22 +334,14 @@ export class AchiClient {
   }
 
   async createFolder(body: { name: string; parentFolderId?: string | null; teamId?: string | null }): Promise<FolderPublic> {
-    return this.json<FolderPublic>('/v1/folders', {
-      method: 'POST',
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return this.json<FolderPublic>('/v1/folders', jsonBody('POST', body))
   }
 
   async patchFolder(
     id: string,
     body: { name?: string; starred?: boolean; trashed?: boolean; parentFolderId?: string | null },
   ): Promise<FolderPublic> {
-    return this.json<FolderPublic>(`/v1/folders/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return this.json<FolderPublic>(`/v1/folders/${encodeURIComponent(id)}`, jsonBody('PATCH', body))
   }
 
   async deleteFolder(id: string, opts: { permanent?: boolean } = {}): Promise<{ ok: boolean; id: string; permanent: boolean }> {
@@ -375,11 +359,7 @@ export class AchiClient {
 
   async setValuation(kind: 'unit' | 'building', id: string, body: Record<string, unknown>) {
     const base = kind === 'unit' ? '/v1/properties/units/' : '/v1/properties/buildings/'
-    return this.json<unknown>(`${base}${encodeURIComponent(id)}/valuation`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    return this.json<unknown>(`${base}${encodeURIComponent(id)}/valuation`, jsonBody('PUT', body))
   }
 
   async listUnits(opts: { teamId?: string; scope?: 'all'; financing?: string; buildingId?: string; kind?: string } = {}) {
@@ -411,29 +391,17 @@ export class AchiClient {
   }
 
   async createBuilding(body: Record<string, unknown>) {
-    return this.json<{ building: unknown }>('/v1/properties/buildings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    return this.json<{ building: unknown }>('/v1/properties/buildings', jsonBody('POST', body))
   }
 
   async updateBuilding(id: string, body: Record<string, unknown>) {
-    return this.json<{ building: unknown }>(`/v1/properties/buildings/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    return this.json<{ building: unknown }>(`/v1/properties/buildings/${encodeURIComponent(id)}`, jsonBody('PATCH', body))
   }
 
   async createBuildingSpace(buildingId: string, body: Record<string, unknown>) {
     return this.json<{ space: unknown }>(
       `/v1/properties/buildings/${encodeURIComponent(buildingId)}/spaces`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      },
+      jsonBody('POST', body),
     )
   }
 
@@ -457,11 +425,7 @@ export class AchiClient {
   ) {
     return this.json<{ document: unknown }>(
       `/v1/properties/buildings/${encodeURIComponent(buildingId)}/documents`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      },
+      jsonBody('POST', body),
     )
   }
 
@@ -469,21 +433,11 @@ export class AchiClient {
     const resp = await this.request(
       `/v1/properties/buildings/${encodeURIComponent(buildingId)}/documents/${encodeURIComponent(docId)}/download`,
     )
-    const buf = new Uint8Array(await resp.arrayBuffer())
-    return {
-      mimeType: resp.headers.get('content-type')?.split(';')[0]?.trim() || 'application/octet-stream',
-      bytes: buf,
-      size: buf.length,
-      partial: false,
-    }
+    return this.bytes(resp)
   }
 
   async updateBuildingSpace(spaceId: string, body: Record<string, unknown>) {
-    return this.json<{ space: unknown }>(`/v1/properties/spaces/${encodeURIComponent(spaceId)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    return this.json<{ space: unknown }>(`/v1/properties/spaces/${encodeURIComponent(spaceId)}`, jsonBody('PATCH', body))
   }
 
   async deleteBuildingSpace(spaceId: string) {
@@ -515,11 +469,7 @@ export class AchiClient {
   }
 
   async extractLoanFromDocs(unitId: string, body: { force?: boolean; dryRun?: boolean } = {}) {
-    return this.json<unknown>(`/v1/properties/units/${encodeURIComponent(unitId)}/loan-from-docs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    return this.json<unknown>(`/v1/properties/units/${encodeURIComponent(unitId)}/loan-from-docs`, jsonBody('POST', body))
   }
 
   async listUnitLoans(unitId: string) {
@@ -527,21 +477,13 @@ export class AchiClient {
   }
 
   async createUnitLoan(unitId: string, body: Record<string, unknown>) {
-    return this.json<{ loan: unknown }>(`/v1/properties/units/${encodeURIComponent(unitId)}/loans`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    return this.json<{ loan: unknown }>(`/v1/properties/units/${encodeURIComponent(unitId)}/loans`, jsonBody('POST', body))
   }
 
   async updateUnit(id: string, body: Record<string, unknown>) {
     return this.json<{ unit: unknown; changedFields: string[]; version: unknown }>(
       `/v1/properties/units/${encodeURIComponent(id)}`,
-      {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      },
+      jsonBody('PATCH', body),
     )
   }
 
@@ -590,11 +532,7 @@ export class AchiClient {
   ) {
     return this.json<{ document: unknown }>(
       `/v1/properties/units/${encodeURIComponent(unitId)}/documents`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      },
+      jsonBody('POST', body),
     )
   }
 
@@ -615,11 +553,7 @@ export class AchiClient {
   ) {
     return this.json<{ document: unknown }>(
       `/v1/properties/units/${encodeURIComponent(unitId)}/documents/${encodeURIComponent(docId)}`,
-      {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      },
+      jsonBody('PATCH', body),
     )
   }
 
@@ -645,24 +579,14 @@ export class AchiClient {
       summary: unknown
       rows: unknown[]
       dryRun: boolean
-    }>('/v1/properties/proof-of-revenue', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    }>('/v1/properties/proof-of-revenue', jsonBody('POST', body))
   }
 
   async downloadUnitDocument(unitId: string, docId: string): Promise<ContentBytes> {
     const resp = await this.request(
       `/v1/properties/units/${encodeURIComponent(unitId)}/documents/${encodeURIComponent(docId)}/download`,
     )
-    const buf = new Uint8Array(await resp.arrayBuffer())
-    return {
-      mimeType: resp.headers.get('content-type')?.split(';')[0]?.trim() || 'application/octet-stream',
-      bytes: buf,
-      size: buf.length,
-      partial: false,
-    }
+    return this.bytes(resp)
   }
 
   async listUnitPayments(unitId: string, opts: { from?: string; to?: string } = {}) {
@@ -673,7 +597,8 @@ export class AchiClient {
     return this.json('/v1/properties/landlord-profile', {}, opts)
   }
 
-  async listBank(opts: { teamId: string; from?: string; to?: string }) {
+  /** Properties app: rent bank ledger (Kontoauszug) of a team space. Not the Financials books. */
+  async listPropertiesBankTransactions(opts: { teamId: string; from?: string; to?: string }) {
     return this.json('/v1/properties/bank', {}, opts)
   }
 
@@ -710,17 +635,10 @@ export class AchiClient {
 
   async readMailAttachment(id: string): Promise<ContentBytes & { filename: string | null }> {
     const resp = await this.request(`/v1/mail/attachments/${encodeURIComponent(id)}`)
-    const buf = new Uint8Array(await resp.arrayBuffer())
     const disposition = resp.headers.get('content-disposition') || ''
     const star = /filename\*=UTF-8''([^;]+)/i.exec(disposition)
     const plain = /filename="([^"]+)"/i.exec(disposition)
-    return {
-      mimeType: resp.headers.get('content-type')?.split(';')[0]?.trim() || 'application/octet-stream',
-      bytes: buf,
-      size: buf.length,
-      partial: false,
-      filename: star ? decodeURIComponent(star[1]!) : plain?.[1] ?? null,
-    }
+    return { ...(await this.bytes(resp)), filename: star ? decodeURIComponent(star[1]!) : plain?.[1] ?? null }
   }
 
   async readMail(id: string) {
@@ -728,19 +646,11 @@ export class AchiClient {
   }
 
   async manageMail(body: Record<string, unknown>) {
-    return this.json('/v1/mail/messages/manage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    return this.json('/v1/mail/messages/manage', jsonBody('POST', body))
   }
 
   async createMailDraft(body: Record<string, unknown>) {
-    return this.json('/v1/mail/drafts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    return this.json('/v1/mail/drafts', jsonBody('POST', body))
   }
 
   async listAgentNotes(opts: { teamId?: string } = {}) {
@@ -760,17 +670,9 @@ export class AchiClient {
   }
 
   async createNkLetter(body: Record<string, unknown>): Promise<ContentBytes & { documentId?: string; settlementId?: string }> {
-    const resp = await this.request('/v1/letters/nk', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    const buf = new Uint8Array(await resp.arrayBuffer())
+    const resp = await this.request('/v1/letters/nk', jsonBody('POST', body))
     return {
-      mimeType: 'application/pdf',
-      bytes: buf,
-      size: buf.length,
-      partial: false,
+      ...(await this.bytes(resp, 'application/pdf')),
       documentId: resp.headers.get('x-achi-document-id') || undefined,
       settlementId: resp.headers.get('x-achi-nk-settlement-id') || undefined,
     }
@@ -788,19 +690,11 @@ export class AchiClient {
   }
 
   async createPropertyVisit(body: Record<string, unknown>) {
-    return this.json('/v1/properties/visits', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    return this.json('/v1/properties/visits', jsonBody('POST', body))
   }
 
   async updatePropertyVisit(id: string, body: Record<string, unknown>) {
-    return this.json(`/v1/properties/visits/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    return this.json(`/v1/properties/visits/${encodeURIComponent(id)}`, jsonBody('PATCH', body))
   }
 
   async listNkSettlements(unitId: string, opts: { year?: number } = {}) {
@@ -811,22 +705,10 @@ export class AchiClient {
     )
   }
 
-  async createNkSettlement(unitId: string, body: Record<string, unknown>) {
-    return this.json(`/v1/properties/units/${encodeURIComponent(unitId)}/nk`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-  }
-
   async updateNkSettlement(unitId: string, nkId: string, body: Record<string, unknown>) {
     return this.json(
       `/v1/properties/units/${encodeURIComponent(unitId)}/nk/${encodeURIComponent(nkId)}`,
-      {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      },
+      jsonBody('PATCH', body),
     )
   }
 
@@ -835,11 +717,7 @@ export class AchiClient {
   }
 
   async createCrmBoard(body: Record<string, unknown>) {
-    return this.json('/v1/crm/boards', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    return this.json('/v1/crm/boards', jsonBody('POST', body))
   }
 
   async listCrmRecords(opts: { boardId: string; q?: string }) {
@@ -847,27 +725,15 @@ export class AchiClient {
   }
 
   async createCrmRecord(body: Record<string, unknown>) {
-    return this.json('/v1/crm/records', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    return this.json('/v1/crm/records', jsonBody('POST', body))
   }
 
   async updateCrmRecord(id: string, body: Record<string, unknown>) {
-    return this.json(`/v1/crm/records/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    return this.json(`/v1/crm/records/${encodeURIComponent(id)}`, jsonBody('PATCH', body))
   }
 
   async refreshCrmXProfile(id: string) {
-    return this.json(`/v1/crm/records/${encodeURIComponent(id)}/refresh-x`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{}',
-    })
+    return this.json(`/v1/crm/records/${encodeURIComponent(id)}/refresh-x`, jsonBody('POST', {}))
   }
 
   async getCrmStats(boardId: string) {
@@ -881,15 +747,56 @@ export class AchiClient {
   async restoreCrmRecord(id: string, versionId: string) {
     return this.json(
       `/v1/crm/records/${encodeURIComponent(id)}/versions/${encodeURIComponent(versionId)}/restore`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },
+      jsonBody('POST', {}),
     )
   }
+
+  // ── Studio ──────────────────────────────────────────────────────────────
+
+  /** {projects:[…]} when the user has several productions, else {project, documents, mediaRefs}. */
+  async listStudioProjects(opts: { projectId?: string } = {}) {
+    return this.json('/studio/project', {}, opts)
+  }
+
+  async getStudioScene(sceneId: string, opts: { projectId?: string } = {}) {
+    return this.json(`/studio/scenes/${encodeURIComponent(sceneId)}`, {}, opts)
+  }
+
+  async getStudioDocument(documentId: string) {
+    return this.json(`/studio/documents/${encodeURIComponent(documentId)}`)
+  }
+
+  async updateStudioDocument(
+    documentId: string,
+    body: {
+      expectedUpdatedAt: string
+      reason: string
+      title?: string
+      payload?: Record<string, unknown>
+      sceneBase?: Record<string, string>
+    },
+  ) {
+    return this.json(`/studio/documents/${encodeURIComponent(documentId)}`, jsonBody('PATCH', body))
+  }
+
+  async listStudioVersions(documentId: string) {
+    return this.json('/studio/versions', {}, { documentId })
+  }
+
+  /** Downscaled JPEG of an image file (used to look at Studio renders). */
+  async readFilePreview(id: string, opts: { maxWidth?: number } = {}): Promise<ContentBytes> {
+    const resp = await this.request(`/v1/files/${encodeURIComponent(id)}/preview`, {}, opts)
+    return this.bytes(resp, resp.headers.get('content-type') ? undefined : 'image/jpeg')
+  }
+
+  // ── Financials ──────────────────────────────────────────────────────────
 
   async getFinancialsBook(opts: { teamId?: string } = {}) {
     return this.json('/v1/financials/book', {}, opts)
   }
 
-  async listBankTransactions(opts: { teamId?: string; state?: string; missingReceipt?: boolean } = {}) {
+  /** Financials app: bank lines of the space's books. Not the Properties rent ledger. */
+  async listBookTransactions(opts: { teamId?: string; state?: string; missingReceipt?: boolean } = {}) {
     return this.json('/v1/financials/transactions', {}, {
       teamId: opts.teamId,
       state: opts.state,
@@ -898,19 +805,19 @@ export class AchiClient {
   }
 
   async importBankCsv(bankId: string, body: { csv: string; dryRun?: boolean; teamId?: string }) {
-    return this.json(`/v1/financials/banks/${encodeURIComponent(bankId)}/import`, jsonPost(body), { teamId: body.teamId })
+    return this.json(`/v1/financials/banks/${encodeURIComponent(bankId)}/import`, jsonBody('POST', body), { teamId: body.teamId })
   }
 
   async categorizeTransaction(id: string, body: { teamId?: string } & Record<string, unknown>) {
-    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/categorize`, jsonPost(body), { teamId: body.teamId })
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/categorize`, jsonBody('POST', body), { teamId: body.teamId })
   }
 
   async excludeTransaction(id: string, opts: { teamId?: string } = {}) {
-    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/exclude`, jsonPost({}), { teamId: opts.teamId })
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/exclude`, jsonBody('POST', {}), { teamId: opts.teamId })
   }
 
   async setTransactionRate(id: string, body: { rate: string; teamId?: string }) {
-    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/rate`, jsonPost({ rate: body.rate }), { teamId: body.teamId })
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/rate`, jsonBody('POST', { rate: body.rate }), { teamId: body.teamId })
   }
 
   /** Read a receipt from disk and upload it; the server hashes it and stores it once per book. */
@@ -933,7 +840,7 @@ export class AchiClient {
       throw new AchiApiError(413, 'FILE_TOO_LARGE', `Receipts are limited to 25 MB (${opts.path} is ${info.size} bytes)`)
     }
     const bytes = await readFile(opts.path)
-    return this.json('/v1/financials/documents', jsonPost({
+    return this.json('/v1/financials/documents', jsonBody('POST', {
       filename: (opts.filename ?? basename(opts.path)).trim(),
       contentBase64: bytes.toString('base64'),
       mimeType: opts.mimeType,
@@ -947,7 +854,7 @@ export class AchiClient {
   }
 
   async attachReceipt(transactionId: string, documentId: string, opts: { teamId?: string } = {}) {
-    return this.json(`/v1/financials/transactions/${encodeURIComponent(transactionId)}/attach`, jsonPost({ documentId }), { teamId: opts.teamId })
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(transactionId)}/attach`, jsonBody('POST', { documentId }), { teamId: opts.teamId })
   }
 
   async detachReceipt(transactionId: string, documentId: string, opts: { teamId?: string } = {}) {
@@ -971,15 +878,15 @@ export class AchiClient {
   }
 
   async postTransfer(id: string, body: { counterTransactionId: string; dryRun?: boolean; teamId?: string }) {
-    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/transfer`, jsonPost(body), { teamId: body.teamId })
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/transfer`, jsonBody('POST', body), { teamId: body.teamId })
   }
 
   async unpostTransaction(id: string, body: { memo?: string; occurredOn?: string; teamId?: string } = {}) {
-    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/unpost`, jsonPost(body), { teamId: body.teamId })
+    return this.json(`/v1/financials/transactions/${encodeURIComponent(id)}/unpost`, jsonBody('POST', body), { teamId: body.teamId })
   }
 
   async reverseJournal(id: string, body: { memo?: string; occurredOn?: string; teamId?: string } = {}) {
-    return this.json(`/v1/financials/journals/${encodeURIComponent(id)}/reverse`, jsonPost(body), { teamId: body.teamId })
+    return this.json(`/v1/financials/journals/${encodeURIComponent(id)}/reverse`, jsonBody('POST', body), { teamId: body.teamId })
   }
 
   async postJournal(body: {
@@ -990,7 +897,7 @@ export class AchiClient {
     dryRun?: boolean
     teamId?: string
   }) {
-    return this.json('/v1/financials/journals', jsonPost(body), { teamId: body.teamId })
+    return this.json('/v1/financials/journals', jsonBody('POST', body), { teamId: body.teamId })
   }
 
   async listJournals(opts: { from?: string; to?: string; accountCode?: string; limit?: number; teamId?: string } = {}) {
@@ -1014,13 +921,13 @@ export class AchiClient {
   }
 
   async createDepartment(body: { code: string; name: string; teamId?: string }) {
-    return this.json('/v1/financials/departments', jsonPost({ code: body.code, name: body.name }), { teamId: body.teamId })
+    return this.json('/v1/financials/departments', jsonBody('POST', { code: body.code, name: body.name }), { teamId: body.teamId })
   }
 
   async setTransactionDepartment(id: string, body: { departmentCode: string | null; teamId?: string }) {
     return this.json(
       `/v1/financials/transactions/${encodeURIComponent(id)}/department`,
-      jsonPost({ departmentCode: body.departmentCode }),
+      jsonBody('POST', { departmentCode: body.departmentCode }),
       { teamId: body.teamId },
     )
   }

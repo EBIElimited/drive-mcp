@@ -23,7 +23,7 @@
  */
 
 const token = process.env.ACHI_API_TOKEN
-const apiUrl = (process.env.ACHI_API_URL || 'https://api.achi.cc').replace(/\/+$/, '')
+const apiUrl = (process.env.ACHI_API_URL || 'https://worker.achiapp.com').replace(/\/+$/, '')
 
 if (!token) {
   console.error('Set ACHI_API_TOKEN (achi_pat_... with content access)')

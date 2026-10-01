@@ -1,6 +1,6 @@
 # Achi
 
-Use Achi as the user’s account: spaces, Drive, Properties, Mail, Agent notes, Goals, Game Dev, and tenant letters.
+Use Achi as the user’s account: spaces, Drive, Properties, Mail, CRM, Financials, Studio, Agent notes, Goals, Game Dev, and tenant letters.
 
 **First fetch:** `GET /v1/docs` — job → one URL. Then fetch only that page. Do not guess routes. CRM: `GET /v1/docs/crm`.
 
@@ -8,7 +8,7 @@ Use Achi as the user’s account: spaces, Drive, Properties, Mail, Agent notes, 
 
 ```
 ACHI_API_TOKEN=achi_pat_…     # Settings → AI, content access on
-ACHI_API_URL=https://api.achi.cc   # optional
+ACHI_API_URL=https://worker.achiapp.com   # optional
 ```
 
 MCP: `npx -y github:EBIElimited/drive-mcp`
@@ -21,12 +21,13 @@ The token sees **the same spaces and apps as the user**. Revoke it in Settings �
 
 1. `whoami` then `list_teams`. Use `teamId` for Chi Ross / Elania.
 2. Drive uploads: `upload_file_from_path` for anything on disk (zips, videos). `upload_file` is small text/base64 only and refuses large blobs. REST: never POST a whole zip to `/v1/files` (Cloudflare 413). Use `POST /v1/files/uploads` then PUT exactly 5 MiB **plaintext** chunks (0-based). `User-Agent: Achi-API/1` — urllib is 1010.
-2b. Properties: `list_buildings` then `list_units` → `get_unit` → `update_unit` for empty fields (squareMeters, rooms, loanStatus, buildingId). Always pass `versionReason`. An MFH is one building + one loan; never SUM remainingDebt across its Wohnungen. Create: `create_building`. Garages: `create_building_space` (`occupancyUnitId` = with-rented). Financing: `get_unit_financing` then `apply_financing_suggestion` only after the user confirms. Restschuld: `extract_loan_from_docs` with `dryRun` first. Never invent remaining debt. Filter: `list_units` `kind=etw|building` / `financing=debt_free`. Bad write: `list_unit_versions` then `restore_unit`. Trail: `list_unit_documents` → `create_unit_document` / `download_unit_document`. MFH house file (Kaufvertrag, Nutzungsänderung, Exposé): `list_building_documents` / `create_building_document` — not on a Wohnung. Revenue files need `effectiveOn` + `rentEurosAfter`. Wrong date/title/rent: `update_unit_document`. Bank pack: `create_proof_of_revenue` (`dryRun` first). Pass `buildingId` for an MFH. Past tenant: occupancies with `leaseEnd`. Viewing trips: `list_property_visits` / `create_property_visit`. Never invent kilometres.
-3. Rent paid truth: `list_unit_payments` / `list_bank_transactions`. Do not invent payments.
+2b. Properties: `list_buildings` then `list_units` → `get_unit` → `update_unit` for empty fields (squareMeters, rooms, loanStatus, buildingId). Always pass `versionReason`. An MFH is one building + one loan; never SUM remainingDebt across its Wohnungen. Create: `create_building`. Garages: `create_building_space` / `update_building_space` / `delete_building_space` (`occupancyUnitId` = with-rented). Financing: `get_unit_financing` then `apply_financing_suggestion` only after the user confirms. Restschuld: `extract_loan_from_docs` with `dryRun` first. Never invent remaining debt. Filter: `list_units` `kind=etw|building` / `financing=debt_free`. Bad write: `list_unit_versions` then `restore_unit`. Trail: `list_unit_documents` → `create_unit_document` / `download_unit_document`. MFH house file (Kaufvertrag, Nutzungsänderung, Exposé): `list_building_documents` / `create_building_document` — not on a Wohnung. Revenue files need `effectiveOn` + `rentEurosAfter`. Wrong date/title/rent: `update_unit_document`. Bank pack: `create_proof_of_revenue` (`dryRun` first). Pass `buildingId` for an MFH. Past tenant: occupancies with `leaseEnd`. Viewing trips: `list_property_visits` / `create_property_visit`. Never invent kilometres.
+3. Rent paid truth: `list_unit_payments` / `list_bank_transactions` (Properties rent ledger, months as `YYYY-MM`). Do not invent payments. The USD books are a different app: `list_book_transactions` (Financials).
 4. Letterhead: `get_landlord_profile`. Empty IBAN / Anschrift stay empty. Never invent them.
 5. Mail: `list_mail_accounts` → `search_mail` → `read_mail`. Reply with `create_mail_draft` (lands in Drafts; the user sends it — agents cannot send). Triage with `manage_mail` (read/unread, flag, Trash, restore). Conversations: `read_mail_thread`. Files: `read_mail_attachment` (`saveTo` for PDFs). `search_mail` filters: `from`, `unread`, `flagged`, `hasAttachments`, `since`/`until`; page with `before`. No passwords.
 6. Space memory: `list_agent_notes` then `read_file` on those ids.
 7. NK letter: `create_nk_letter` with recoverable line items only. No Eigentümerkosten leftover, no Quellenangabe. Server compiles the PDF.
+8. Studio: `list_studio_projects` → `get_studio_document`. Review a scene against its renders with `get_studio_scene`, look at one with `view_studio_render`. Save with `update_studio_document` (`expectedUpdatedAt`, `reason`, and for stories `sceneBase`); the server stamps `scene.updatedAt` — never bump it yourself. On 409 `SCENE_CONFLICT` re-read and re-apply. History: `list_studio_versions`.
 
 ## Do not
 
