@@ -665,6 +665,10 @@ export class AchiClient {
     return this.json(`/v1/mail/drafts/${encodeURIComponent(id)}`, { method: 'DELETE' })
   }
 
+  async sendMailDraft(id: string) {
+    return this.json(`/v1/mail/drafts/${encodeURIComponent(id)}/send`, { method: 'POST' })
+  }
+
   async listAgentNotes(opts: { teamId?: string } = {}) {
     return this.json('/v1/agent/notes', {}, opts)
   }

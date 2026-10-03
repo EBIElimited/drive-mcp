@@ -1,4 +1,4 @@
-/** Mail app: mailboxes, search, read, drafts, triage. Agents never send and never see passwords. */
+/** Mail app: mailboxes, search, read, drafts, triage, sending drafts the user approved. No passwords. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, resolve } from 'node:path';
 import { z } from 'zod';
@@ -25,7 +25,7 @@ async function attachmentsFromPaths(paths) {
         contentBase64: (await readFile(resolve(path))).toString('base64'),
     })));
 }
-const SHOW_DRAFT = 'The result is a preview (from, to, cc, subject, text, attachments): show it to the user. Agents cannot send; the user sends it from Achi → Mail → Drafts.';
+const SHOW_DRAFT = 'The result is a preview (from, to, cc, subject, text, attachments): show it to the user. To send, get their explicit yes, then send_mail_draft.';
 const accountId = z.string().uuid();
 export const register = (server, client) => {
     const { tool, rawTool } = toolkit(server);
@@ -64,6 +64,7 @@ export const register = (server, client) => {
         removeAttachments: z.boolean().optional(),
         ...fileAttachments,
     }, WRITE, async ({ id, filePaths, ...args }) => client.updateMailDraft(id, { ...args, attachments: await attachmentsFromPaths(filePaths) }));
+    tool('send_mail_draft', 'Send a mail draft', 'Send a draft as it stands, with its files, in its thread. ONLY after showing the user the draft (read_mail_draft) and getting their explicit yes in this conversation; never on your own judgement, and again after any change. Needs a key with Manage mail access to that mailbox (Settings → AI).', { id: draftId }, { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true }, ({ id }) => client.sendMailDraft(id));
     tool('delete_mail_draft', 'Delete a mail draft', 'Delete a draft and its files. Drafts only: received and sent mail cannot be deleted.', { id: draftId }, DESTRUCTIVE_IDEMPOTENT, ({ id }) => client.deleteMailDraft(id));
     tool('read_mail_thread', 'Read a mail conversation', 'The conversation a message belongs to (same mailbox, same subject without Re:/Fwd:), oldest first. Read bodies with read_mail.', { id: z.string().uuid().describe('UUID of any message in the conversation') }, READ, ({ id }) => client.readMailThread(id));
     rawTool('read_mail_attachment', 'Open a mail attachment', 'Open a mail attachment (id from read_mail). Text and images come back inline; pass saveTo to write the file (e.g. a PDF) to a local path instead (an existing file at that path is overwritten).', {

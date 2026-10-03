@@ -1,4 +1,4 @@
-/** Mail app: mailboxes, search, read, drafts, triage. Agents never send and never see passwords. */
+/** Mail app: mailboxes, search, read, drafts, triage, sending drafts the user approved. No passwords. */
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, resolve } from 'node:path'
@@ -30,7 +30,7 @@ async function attachmentsFromPaths(paths: string[] | undefined) {
   })))
 }
 
-const SHOW_DRAFT = 'The result is a preview (from, to, cc, subject, text, attachments): show it to the user. Agents cannot send; the user sends it from Achi → Mail → Drafts.'
+const SHOW_DRAFT = 'The result is a preview (from, to, cc, subject, text, attachments): show it to the user. To send, get their explicit yes, then send_mail_draft.'
 const accountId = z.string().uuid()
 
 export const register: Register = (server, client) => {
@@ -117,6 +117,15 @@ export const register: Register = (server, client) => {
     },
     WRITE,
     async ({ id, filePaths, ...args }) => client.updateMailDraft(id, { ...args, attachments: await attachmentsFromPaths(filePaths) }),
+  )
+
+  tool(
+    'send_mail_draft',
+    'Send a mail draft',
+    'Send a draft as it stands, with its files, in its thread. ONLY after showing the user the draft (read_mail_draft) and getting their explicit yes in this conversation; never on your own judgement, and again after any change. Needs a key with Manage mail access to that mailbox (Settings → AI).',
+    { id: draftId },
+    { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+    ({ id }) => client.sendMailDraft(id),
   )
 
   tool(
