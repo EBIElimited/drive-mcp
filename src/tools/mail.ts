@@ -1,11 +1,36 @@
 /** Mail app: mailboxes, search, read, drafts, triage. Agents never send and never see passwords. */
 
-import { mkdir, writeFile } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { basename, dirname, extname, resolve } from 'node:path'
 import { z } from 'zod'
 import { DESTRUCTIVE_IDEMPOTENT, READ, WRITE, contentBytesToMcp, jsonText, teamIdWith, toolkit, type Register } from '../helpers.js'
 
 const messageId = z.string().uuid().describe('Message UUID from search_mail.')
+const draftId = z.string().uuid().describe('Draft UUID (draftMessageId from create_mail_draft).')
+
+const MIME_BY_EXT: Record<string, string> = {
+  '.pdf': 'application/pdf', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.txt': 'text/plain', '.csv': 'text/csv', '.zip': 'application/zip',
+  '.doc': 'application/msword', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+}
+
+const fileAttachments = {
+  filePaths: z.array(z.string()).max(10).optional().describe('Local files to attach (read by this MCP server).'),
+  driveFileIds: z.array(z.string().uuid()).max(10).optional().describe('Achi Drive file UUIDs to attach (needs a content-access key).'),
+}
+
+/** Local paths → { filename, mimeType, contentBase64 } for the API. */
+async function attachmentsFromPaths(paths: string[] | undefined) {
+  if (!paths?.length) return undefined
+  return Promise.all(paths.map(async (path) => ({
+    filename: basename(path),
+    mimeType: MIME_BY_EXT[extname(path).toLowerCase()] ?? 'application/octet-stream',
+    contentBase64: (await readFile(resolve(path))).toString('base64'),
+  })))
+}
+
+const SHOW_DRAFT = 'The result is a preview (from, to, cc, subject, text, attachments): show it to the user. Agents cannot send; the user sends it from Achi → Mail → Drafts.'
 const accountId = z.string().uuid()
 
 export const register: Register = (server, client) => {
@@ -54,7 +79,7 @@ export const register: Register = (server, client) => {
   tool(
     'create_mail_draft',
     'Save a mail draft',
-    'Save a draft in Achi → Mail → Drafts. Agents cannot send; the user reviews and sends it. With replyToMessageId, to and "Re: subject" default from that message and the reply stays in the thread.',
+    `Save a draft in Achi → Mail → Drafts, with files from local paths or Achi Drive. With replyToMessageId, to and "Re: subject" default from that message and the reply stays in the thread. ${SHOW_DRAFT}`,
     {
       accountId: accountId.describe('Mailbox UUID to draft from (list_mail_accounts)'),
       text: z.string().min(1).describe('Plain-text body'),
@@ -62,9 +87,45 @@ export const register: Register = (server, client) => {
       to: z.array(z.string()).optional().describe('Recipient addresses. Optional when replying.'),
       cc: z.array(z.string()).optional(),
       subject: z.string().optional().describe('Optional when replying.'),
+      ...fileAttachments,
     },
     WRITE,
-    (args) => client.createMailDraft(args),
+    async ({ filePaths, ...args }) => client.createMailDraft({ ...args, attachments: await attachmentsFromPaths(filePaths) }),
+  )
+
+  tool(
+    'read_mail_draft',
+    'Read a mail draft',
+    `A draft as it would be sent. ${SHOW_DRAFT}`,
+    { id: draftId },
+    READ,
+    ({ id }) => client.readMailDraft(id),
+  )
+
+  tool(
+    'update_mail_draft',
+    'Change a mail draft',
+    `Change any of to, cc, subject, text. filePaths / driveFileIds replace the draft's files; removeAttachments drops them. ${SHOW_DRAFT}`,
+    {
+      id: draftId,
+      to: z.array(z.string()).optional(),
+      cc: z.array(z.string()).optional(),
+      subject: z.string().optional(),
+      text: z.string().min(1).optional(),
+      removeAttachments: z.boolean().optional(),
+      ...fileAttachments,
+    },
+    WRITE,
+    async ({ id, filePaths, ...args }) => client.updateMailDraft(id, { ...args, attachments: await attachmentsFromPaths(filePaths) }),
+  )
+
+  tool(
+    'delete_mail_draft',
+    'Delete a mail draft',
+    'Delete a draft and its files. Drafts only: received and sent mail cannot be deleted.',
+    { id: draftId },
+    DESTRUCTIVE_IDEMPOTENT,
+    ({ id }) => client.deleteMailDraft(id),
   )
 
   tool(

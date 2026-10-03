@@ -348,6 +348,15 @@ export class AchiClient {
     async createMailDraft(body) {
         return this.json('/v1/mail/drafts', jsonBody('POST', body));
     }
+    async readMailDraft(id) {
+        return this.json(`/v1/mail/drafts/${encodeURIComponent(id)}`);
+    }
+    async updateMailDraft(id, body) {
+        return this.json(`/v1/mail/drafts/${encodeURIComponent(id)}`, jsonBody('PATCH', body));
+    }
+    async deleteMailDraft(id) {
+        return this.json(`/v1/mail/drafts/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    }
     async listAgentNotes(opts = {}) {
         return this.json('/v1/agent/notes', {}, opts);
     }

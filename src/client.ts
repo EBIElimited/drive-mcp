@@ -653,6 +653,18 @@ export class AchiClient {
     return this.json('/v1/mail/drafts', jsonBody('POST', body))
   }
 
+  async readMailDraft(id: string) {
+    return this.json(`/v1/mail/drafts/${encodeURIComponent(id)}`)
+  }
+
+  async updateMailDraft(id: string, body: Record<string, unknown>) {
+    return this.json(`/v1/mail/drafts/${encodeURIComponent(id)}`, jsonBody('PATCH', body))
+  }
+
+  async deleteMailDraft(id: string) {
+    return this.json(`/v1/mail/drafts/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  }
+
   async listAgentNotes(opts: { teamId?: string } = {}) {
     return this.json('/v1/agent/notes', {}, opts)
   }
