@@ -104,7 +104,8 @@ Every tool carries a `title` and MCP `annotations` (`readOnlyHint` for list/get/
 | `create_mail_draft` | Save a draft or reply in Drafts, with local or Drive files; the user sends it |
 | `read_mail_draft` / `update_mail_draft` / `delete_mail_draft` | Check, revise or remove a draft |
 | `send_mail_draft` | Send a draft after the user said yes (Manage key) |
-| `manage_mail` | Mark read/unread, flag, move to Trash or back to Inbox |
+| `manage_mail` | Mark read/unread, flag, archive, Trash/restore, add/remove labels |
+| `list_mail_labels` / `create_mail_label` | Labels of a space, shared by its mailboxes |
 | `read_mail_thread` | The whole conversation a message belongs to |
 | `read_mail_attachment` | Open or save a mail attachment |
 

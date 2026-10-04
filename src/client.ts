@@ -645,6 +645,14 @@ export class AchiClient {
     return this.json(`/v1/mail/messages/${encodeURIComponent(id)}`)
   }
 
+  async listMailLabels(opts: { teamId?: string } = {}) {
+    return this.json('/v1/mail/labels', {}, opts)
+  }
+
+  async createMailLabel(body: Record<string, unknown>) {
+    return this.json('/v1/mail/labels', jsonBody('POST', body))
+  }
+
   async manageMail(body: Record<string, unknown>) {
     return this.json('/v1/mail/messages/manage', jsonBody('POST', body))
   }

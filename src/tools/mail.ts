@@ -53,7 +53,8 @@ export const register: Register = (server, client) => {
       teamId: teamIdWith('Searches the mailboxes of that space.'),
       accountId: accountId.optional().describe('Limit to one mailbox (UUID from list_mail_accounts).'),
       q: z.string().optional().describe('Subject, sender, recipients or preview text'),
-      mailbox: z.enum(['INBOX', 'SENT', 'DRAFTS', 'TRASH']).optional(),
+      mailbox: z.enum(['INBOX', 'ARCHIVE', 'SENT', 'DRAFTS', 'TRASH']).optional(),
+      label: z.string().optional().describe('Label name or id: mail with that label in Inbox, Archive or Sent.'),
       from: z.string().optional().describe('Sender address or name contains'),
       unread: z.boolean().optional().describe('true = only unread.'),
       flagged: z.boolean().optional().describe('true = only flagged.'),
@@ -172,14 +173,39 @@ export const register: Register = (server, client) => {
   tool(
     'manage_mail',
     'Triage mail',
-    'Triage mail in Achi: mark read/unread, flag/unflag, move to Trash or back to Inbox. Up to 100 message ids per call. Needs manage access to the mailbox. Changes Achi, not the mail server.',
+    'Triage mail in Achi: mark read/unread, flag, archive (out of the Inbox, kept), move to Trash or back to Inbox, add/remove labels. Up to 100 message ids per call. Needs manage access to the mailbox. Changes Achi, not the mail server.',
     {
       ids: z.array(z.string().uuid()).min(1).max(100).describe('Message UUIDs from search_mail'),
       seen: z.boolean().optional().describe('true = mark read, false = mark unread.'),
       flagged: z.boolean().optional(),
+      archived: z.boolean().optional().describe('true = archive (leaves the Inbox), false = back to the Inbox.'),
       mailbox: z.enum(['TRASH', 'INBOX']).optional().describe('TRASH to delete, INBOX to restore'),
+      addLabels: z.array(z.string()).max(20).optional().describe('Label ids or names; a new name creates the label in the mailbox\'s space.'),
+      removeLabels: z.array(z.string()).max(20).optional().describe('Label ids or names.'),
     },
     DESTRUCTIVE_IDEMPOTENT,
     (args) => client.manageMail(args),
+  )
+
+  tool(
+    'list_mail_labels',
+    'List mail labels',
+    'Labels of a space with message and unread counts. Labels are shared by all mailboxes in the space.',
+    { teamId: teamIdWith('Labels of that space.') },
+    READ,
+    (args) => client.listMailLabels(args),
+  )
+
+  tool(
+    'create_mail_label',
+    'Create a mail label',
+    'Create a label in a space (returns the existing one if the name is taken). Apply it with manage_mail addLabels. Needs manage access.',
+    {
+      teamId: teamIdWith('The space the label belongs to.'),
+      name: z.string().min(1).max(60),
+      color: z.enum(['slate', 'red', 'orange', 'amber', 'green', 'teal', 'blue', 'violet', 'pink']).optional(),
+    },
+    WRITE,
+    (args) => client.createMailLabel(args),
   )
 }

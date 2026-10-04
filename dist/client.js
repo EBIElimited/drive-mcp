@@ -342,6 +342,12 @@ export class AchiClient {
     async readMail(id) {
         return this.json(`/v1/mail/messages/${encodeURIComponent(id)}`);
     }
+    async listMailLabels(opts = {}) {
+        return this.json('/v1/mail/labels', {}, opts);
+    }
+    async createMailLabel(body) {
+        return this.json('/v1/mail/labels', jsonBody('POST', body));
+    }
     async manageMail(body) {
         return this.json('/v1/mail/messages/manage', jsonBody('POST', body));
     }
