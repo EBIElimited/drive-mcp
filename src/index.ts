@@ -27,6 +27,7 @@ import { register as financials } from './tools/financials.js'
 import { register as mail } from './tools/mail.js'
 import { register as properties } from './tools/properties.js'
 import { register as studio } from './tools/studio.js'
+import { register as tasks } from './tools/tasks.js'
 
 const token = process.env.ACHI_API_TOKEN
 if (!token) {
@@ -45,7 +46,7 @@ const { version } = createRequire(import.meta.url)('../package.json') as { versi
 
 const server = new McpServer({ name: 'achi', version })
 
-const domains: Register[] = [drive, properties, mail, agent, crm, financials, studio]
+const domains: Register[] = [drive, properties, mail, agent, crm, financials, studio, tasks]
 for (const register of domains) register(server, client)
 
 async function main() {

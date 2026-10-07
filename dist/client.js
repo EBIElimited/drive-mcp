@@ -431,6 +431,26 @@ export class AchiClient {
     async restoreCrmRecord(id, versionId) {
         return this.json(`/v1/crm/records/${encodeURIComponent(id)}/versions/${encodeURIComponent(versionId)}/restore`, jsonBody('POST', {}));
     }
+    // ── Tasks ───────────────────────────────────────────────────────────────
+    /** Tasks across spaces, plus lists, spaces with members and open Properties to-dos. */
+    async listTasks(opts = {}) {
+        return this.json('/v1/tasks', {}, opts);
+    }
+    async createTask(body) {
+        return this.json('/v1/tasks', jsonBody('POST', body));
+    }
+    async updateTask(taskId, body) {
+        return this.json(`/v1/tasks/${encodeURIComponent(taskId)}`, jsonBody('PATCH', body));
+    }
+    async deleteTask(taskId) {
+        return this.json(`/v1/tasks/${encodeURIComponent(taskId)}`, { method: 'DELETE' });
+    }
+    async createTaskList(body) {
+        return this.json('/v1/tasks/lists', jsonBody('POST', body));
+    }
+    async updateTaskList(listId, body) {
+        return this.json(`/v1/tasks/lists/${encodeURIComponent(listId)}`, jsonBody('PATCH', body));
+    }
     // ── Studio ──────────────────────────────────────────────────────────────
     /** {projects:[…]} when the user has several productions, else {project, documents, mediaRefs}. */
     async listStudioProjects(opts = {}) {

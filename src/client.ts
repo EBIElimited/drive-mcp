@@ -775,6 +775,33 @@ export class AchiClient {
     )
   }
 
+  // ── Tasks ───────────────────────────────────────────────────────────────
+
+  /** Tasks across spaces, plus lists, spaces with members and open Properties to-dos. */
+  async listTasks(opts: { space?: string; status?: string; listId?: string; assignee?: string; limit?: number } = {}) {
+    return this.json('/v1/tasks', {}, opts)
+  }
+
+  async createTask(body: Record<string, unknown>) {
+    return this.json('/v1/tasks', jsonBody('POST', body))
+  }
+
+  async updateTask(taskId: string, body: Record<string, unknown>) {
+    return this.json(`/v1/tasks/${encodeURIComponent(taskId)}`, jsonBody('PATCH', body))
+  }
+
+  async deleteTask(taskId: string) {
+    return this.json(`/v1/tasks/${encodeURIComponent(taskId)}`, { method: 'DELETE' })
+  }
+
+  async createTaskList(body: { title: string; spaceId?: string | null; color?: string }) {
+    return this.json('/v1/tasks/lists', jsonBody('POST', body))
+  }
+
+  async updateTaskList(listId: string, body: { title?: string; color?: string; archived?: boolean }) {
+    return this.json(`/v1/tasks/lists/${encodeURIComponent(listId)}`, jsonBody('PATCH', body))
+  }
+
   // ── Studio ──────────────────────────────────────────────────────────────
 
   /** {projects:[…]} when the user has several productions, else {project, documents, mediaRefs}. */

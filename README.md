@@ -127,6 +127,14 @@ Every tool carries a `title` and MCP `annotations` (`readOnlyHint` for list/get/
 | `get_crm_stats` | Records, followers, by role / country / stage |
 | `refresh_crm_x_profile` | Followers and country from the public X profile |
 
+### Tasks
+
+| Tool | What it does |
+|---|---|
+| `list_tasks` | To-dos across Personal and all spaces, with lists, members and open Properties to-dos |
+| `create_task` / `update_task` / `complete_task` / `delete_task` | Add, edit (status, due date, assignee, waiting on, link, move space), finish, remove |
+| `create_task_list` / `update_task_list` | Group tasks in a space; rename or archive a list |
+
 ### Financials (USD books)
 
 | Tool | What it does |
