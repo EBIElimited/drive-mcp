@@ -26,6 +26,7 @@ import { register as mail } from './tools/mail.js';
 import { register as properties } from './tools/properties.js';
 import { register as studio } from './tools/studio.js';
 import { register as tasks } from './tools/tasks.js';
+import { register as contracts } from './tools/contracts.js';
 const token = process.env.ACHI_API_TOKEN;
 if (!token) {
     console.error('ERROR: ACHI_API_TOKEN environment variable is required.\n' +
@@ -37,7 +38,7 @@ const client = new AchiClient(apiUrl, token);
 // package.json sits one level above both src/ (tsx) and dist/ (built).
 const { version } = createRequire(import.meta.url)('../package.json');
 const server = new McpServer({ name: 'achi', version });
-const domains = [drive, properties, mail, agent, crm, financials, studio, tasks];
+const domains = [drive, properties, mail, agent, crm, financials, studio, tasks, contracts];
 for (const register of domains)
     register(server, client);
 async function main() {

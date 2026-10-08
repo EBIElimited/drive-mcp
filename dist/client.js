@@ -451,6 +451,40 @@ export class AchiClient {
     async updateTaskList(listId, body) {
         return this.json(`/v1/tasks/lists/${encodeURIComponent(listId)}`, jsonBody('PATCH', body));
     }
+    // ── Contracts ───────────────────────────────────────────────────────────
+    async contractAccess() {
+        return this.json('/v1/contracts/access');
+    }
+    async listContractStudios(teamId) {
+        return this.json('/v1/contracts/studios', {}, { teamId });
+    }
+    async listContractTemplates(teamId) {
+        return this.json('/v1/contracts/templates', {}, { teamId });
+    }
+    async getContractTemplateVersion(versionId) {
+        return this.json(`/v1/contracts/template-versions/${encodeURIComponent(versionId)}`);
+    }
+    async listContracts(opts) {
+        return this.json('/v1/contracts', {}, opts);
+    }
+    async listWaitingContracts(opts = {}) {
+        return this.json('/v1/contracts/waiting', {}, opts);
+    }
+    async getContract(id) {
+        return this.json(`/v1/contracts/${encodeURIComponent(id)}`);
+    }
+    async getContractAudit(id) {
+        return this.json(`/v1/contracts/${encodeURIComponent(id)}/audit`);
+    }
+    async createContract(body) {
+        return this.json('/v1/contracts', jsonBody('POST', body));
+    }
+    async contractAction(id, action, body = {}) {
+        return this.json(`/v1/contracts/${encodeURIComponent(id)}/${action}`, jsonBody('POST', body));
+    }
+    async updateContract(id, body) {
+        return this.json(`/v1/contracts/${encodeURIComponent(id)}`, jsonBody('PATCH', body));
+    }
     // ── Studio ──────────────────────────────────────────────────────────────
     /** {projects:[…]} when the user has several productions, else {project, documents, mediaRefs}. */
     async listStudioProjects(opts = {}) {

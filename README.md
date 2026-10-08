@@ -135,6 +135,15 @@ Every tool carries a `title` and MCP `annotations` (`readOnlyHint` for list/get/
 | `create_task` / `update_task` / `complete_task` / `delete_task` | Add, edit (status, due date, assignee, waiting on, link, move space), finish, remove |
 | `create_task_list` / `update_task_list` | Group tasks in a space; rename or archive a list |
 
+### Contracts
+
+| Tool | What it does |
+|---|---|
+| `list_contract_spaces` / `list_contract_templates` / `get_contract_template_version` | Where you have access, studios, templates and their fields |
+| `list_contracts` / `list_contracts_waiting` / `get_contract` / `get_contract_audit` | Contracts, status, values (sensitive ones only for admin/signatory, audited) and audit trail |
+| `create_contract` | Create from an active template and email the signing link |
+| `contract_action` / `update_contract` | Resend, renew link, void, return for correction, send draft; reminders. Countersigning only in the app |
+
 ### Financials (USD books)
 
 | Tool | What it does |
